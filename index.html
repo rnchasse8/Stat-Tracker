@@ -255,7 +255,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'https://corsproxy.io/?url=https://statsapi.mlb.com/api/v1';
+const API = 'https://statsapi.mlb.com/api/v1';
+const PROXY = 'https://api.allorigins.win/raw?url=';
+function proxiedFetch(url) {
+  return fetch(PROXY + encodeURIComponent(url));
+}
 let season = 2026;
 let currentTab = 'pitchers';
 let modalTab = 'overview';
@@ -294,7 +298,7 @@ async function fetchStats(p) {
   if (statsCache[key]) return statsCache[key];
   try {
     const url = `${API}/people/${p.id}/stats?stats=statsSingleSeason&season=${season}&group=${p.type === 'pitcher' ? 'pitching' : 'hitting'}&sportId=11,12,13,14,15,16`;
-    const r = await fetch(url);
+    const r = await proxiedFetch(url);
     const d = await r.json();
     const splits = d.stats?.[0]?.splits || [];
     // aggregate combined
@@ -469,7 +473,7 @@ async function doSearch(inline=false) {
   if (!q) return;
   if (!inline) document.getElementById('searchResults').style.display='none';
   try {
-    const r = await fetch(`${API}/people/search?names=${encodeURIComponent(q)}&sportIds=11,12,13,14,15,16&active=true`);
+    const r = await proxiedFetch(`${API}/people/search?names=${encodeURIComponent(q)}&sportIds=11,12,13,14,15,16&active=true`);
     const d = await r.json();
     searchResults = d.people || [];
     if (inline) showInlineResults(searchResults);
@@ -499,7 +503,7 @@ async function addPlayerFromSearch(id) {
   document.getElementById('searchInput').value='';
   if (players.find(p=>p.id===id)) { showToast('Player already on roster'); return; }
   try {
-    const r = await fetch(`${API}/people/${id}?hydrate=currentTeam`);
+    const r = await proxiedFetch(`${API}/people/${id}?hydrate=currentTeam`);
     const d = await r.json();
     const p = d.people?.[0];
     if (!p) return;
@@ -551,7 +555,7 @@ async function loadGameLog() {
   try {
     const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
     const url = `${API}/people/${id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
-    const r = await fetch(url);
+    const r = await proxiedFetch(url);
     const d = await r.json();
     const splits = (d.stats?.[0]?.splits || []).slice(-limit).reverse();
     if (!splits.length) { box.innerHTML = '<div class="empty-state"><h2>No game log data found</h2><p>This player may not have appeared in a game yet this season.</p></div>'; return; }
@@ -764,7 +768,7 @@ async function loadRecap() {
     try {
       const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
       const url = `${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
-      const r = await fetch(url);
+      const r = await proxiedFetch(url);
       const d = await r.json();
       const splits = d.stats?.[0]?.splits || [];
       const game = splits.find(s => s.date === dateStr);
