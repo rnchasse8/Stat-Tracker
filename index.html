@@ -141,6 +141,7 @@
   <div class="tab active" id="tab-pitchers" onclick="switchTab('pitchers')">Pitchers <span class="cnt" id="pitcher-cnt">0</span></div>
   <div class="tab" id="tab-hitters" onclick="switchTab('hitters')">Hitters <span class="cnt" id="hitter-cnt">0</span></div>
   <div class="tab" id="tab-gamelog" onclick="switchTab('gamelog')">Game Log</div>
+  <div class="tab" id="tab-recap" onclick="switchTab('recap')">Daily Recap</div>
 </div>
 
 <div class="content">
@@ -446,11 +447,12 @@ function updateCounts() {
 
 function switchTab(tab) {
   currentTab = tab;
-  ['pitchers','hitters','gamelog'].forEach(t => {
+  ['pitchers','hitters','gamelog','recap'].forEach(t => {
     document.getElementById(`tab-${t}`).className = 'tab' + (t===tab?' active':'');
     document.getElementById(`view-${t}`).style.display = t===tab?'block':'none';
   });
   if (tab === 'gamelog') updateGameLogDropdown();
+  if (tab === 'recap') loadRecap();
 }
 
 // Search
@@ -740,6 +742,126 @@ function switchModalTab(tab) {
   Object.values(trendCharts).forEach(c=>c.destroy()); trendCharts={};
   if (tab==='overview') renderModalOverview(currentModalPlayer);
   else renderModalCharts(currentModalPlayer);
+}
+
+// Daily Recap
+async function loadRecap() {
+  if (!players.length) {
+    document.getElementById('recap-content').innerHTML = '<div class="empty-state"><h2>No players on your roster yet</h2><p>Add players first to see their daily recap.</p></div>';
+    return;
+  }
+  const box = document.getElementById('recap-content');
+  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading yesterday\'s stats...</div>';
+
+  // Get yesterday's date
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const dateStr = yesterday.toISOString().split('T')[0];
+  document.getElementById('recap-date-label').textContent = `Recap for ${yesterday.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'})}`;
+
+  const results = [];
+  await Promise.all(players.map(async p => {
+    try {
+      const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
+      const url = `${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
+      const r = await fetch(url);
+      const d = await r.json();
+      const splits = d.stats?.[0]?.splits || [];
+      const game = splits.find(s => s.date === dateStr);
+      if (game) results.push({ p, stat: game.stat, opponent: game.opponent?.name || '—', date: game.date });
+    } catch(e) {}
+  }));
+
+  if (!results.length) {
+    box.innerHTML = `<div class="empty-state"><h2>No games found for yesterday</h2><p>Either no roster players appeared in a game, or games haven't been logged yet.</p></div>`;
+    return;
+  }
+
+  // Sort alphabetically
+  results.sort((a,b) => a.p.name.localeCompare(b.p.name));
+
+  const pitchers = results.filter(r => r.p.type === 'pitcher');
+  const hitters = results.filter(r => r.p.type === 'hitter');
+
+  let html = '';
+
+  if (pitchers.length) {
+    html += `<div class="chart-title" style="margin-bottom:12px">Pitchers</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-bottom:28px">
+      <thead><tr>
+        <th style="text-align:left;padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border)">Player</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Opp</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">IP</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">H</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">R</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">ER</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">BB</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SO</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">HR</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Dec</th>
+      </tr></thead>
+      <tbody>${pitchers.map(({p, stat, opponent}) => {
+        const dec = stat.wins > 0 ? 'W' : stat.losses > 0 ? 'L' : '—';
+        const decColor = dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)';
+        return `<tr>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:left">
+            <span style="font-weight:700">${p.name}</span>
+            <span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span>
+          </td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--muted);font-size:0.82rem">${opponent}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.inningsPitched||'—'}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.hits||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.runs||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.earnedRuns||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.baseOnBalls||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.strikeOuts||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.homeRuns||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:${decColor}">${dec}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
+
+  if (hitters.length) {
+    html += `<div class="chart-title" style="margin-bottom:12px">Hitters</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+      <thead><tr>
+        <th style="text-align:left;padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border)">Player</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Opp</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">AB</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">H</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">2B</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">3B</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">HR</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">RBI</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">R</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">BB</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SO</th>
+        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SB</th>
+      </tr></thead>
+      <tbody>${hitters.map(({p, stat, opponent}) => {
+        return `<tr>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:left">
+            <span style="font-weight:700">${p.name}</span>
+            <span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span>
+          </td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--muted);font-size:0.82rem">${opponent}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.atBats||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.hits||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.doubles||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.triples||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.homeRuns||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.rbi||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.runs||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.baseOnBalls||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.strikeOuts||0}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.stolenBases||0}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
+
+  box.innerHTML = html;
 }
 
 // Init
