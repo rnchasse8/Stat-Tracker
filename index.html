@@ -291,18 +291,21 @@ async function refreshAll() {
 async function fetchStats(p) {
   const key = `${p.id}-${season}`;
   if (statsCache[key]) return statsCache[key];
-  try {
-    const url = `${API}/people/${p.id}/stats?stats=statsSingleSeason&season=${season}&group=${p.type === 'pitcher' ? 'pitching' : 'hitting'}&sportId=11`;
-    const r = await proxiedFetch(url);
-    const d = await r.json();
-    const splits = d.stats?.[0]?.splits || [];
-    let agg = splits.length > 0 ? aggregateSplits(splits, p.type) : null;
-    statsCache[key] = { splits, agg };
-    return statsCache[key];
-  } catch(e) {
-    statsCache[key] = { splits: [], agg: null };
-    return statsCache[key];
+  const group = p.type === 'pitcher' ? 'pitching' : 'hitting';
+  const sportIds = [11,12,13,14,15,16];
+  let splits = [];
+  for (const sportId of sportIds) {
+    try {
+      const url = `${API}/people/${p.id}/stats?stats=season&season=${season}&group=${group}&sportId=${sportId}`;
+      const r = await proxiedFetch(url);
+      const d = await r.json();
+      const s = d.stats?.[0]?.splits || [];
+      if (s.length > 0) { splits = s; break; }
+    } catch(e) {}
   }
+  const agg = splits.length > 0 ? aggregateSplits(splits, p.type) : null;
+  statsCache[key] = { splits, agg };
+  return statsCache[key];
 }
 
 function aggregateSplits(splits, type) {
@@ -520,7 +523,7 @@ async function loadGameLog() {
   const p = players.find(pl=>pl.id==id);
   try {
     const type = p.type==='pitcher'?'pitching':'hitting';
-    const r = await proxiedFetch(`${API}/people/${id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11`);
+    const r = await proxiedFetch(`${API}/people/${id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`);
     const d = await r.json();
     const splits = (d.stats?.[0]?.splits||[]).slice(-limit).reverse();
     if (!splits.length) {box.innerHTML='<div class="empty-state"><h2>No game log data found</h2></div>'; return;}
@@ -689,7 +692,7 @@ async function loadRecap() {
   await Promise.all(players.map(async p=>{
     try {
       const type=p.type==='pitcher'?'pitching':'hitting';
-      const r=await proxiedFetch(`${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11`);
+      const r=await proxiedFetch(`${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`);
       const d=await r.json();
       const splits=d.stats?.[0]?.splits||[];
       const game=splits.find(s=>s.date===dateStr);
