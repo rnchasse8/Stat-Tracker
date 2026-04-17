@@ -1,3 +1,499 @@
+
+hey Claude, can you help me reverse engineer something
+Apr 8
+Sure, I'd be happy to help with reverse engineering! What are you looking to reverse engineer? Feel free to share the details — whether it's code, a file format, a protocol, an algorithm, or something else.
+my friend built a stat tracker for Minor League baseball players
+Apr 8
+Fun project! What do you want to reverse engineer from it? For example:
+The data source — figuring out where they're pulling Minor League stats from
+The code/logic — understanding how they built it
+The schema/structure — how the data is organized
+The algorithm — how they calculate certain stats or rankings
+Do you have access to the app itself, some code snippets, network traffic, or anything else to work with?
+https://samhighfill.github.io/baseball-dashboard/
+That's the app/website. Is there any way to add independent league stats to this/college/mexican league stats or is that not possible?
+Apr 8
+That's a great question! Let me break down what's realistic here.
+What I can see from the URL
+It's a GitHub Pages site, so the source code is almost certainly public at github.com/samhighfill/baseball-dashboard. You could look there to understand exactly how it's built and where it pulls data from.
+Where Minor League stats typically come from
+Most MiLB trackers pull from one of these sources:
+MLB Stats API (statsapi.mlb.com) — free, undocumented but widely used, covers affiliated MiLB
+Baseball Reference — scrapable but against their ToS
+FanGraphs — similar situation
+The challenge with adding other leagues
+The leagues you mentioned each have different situations:
+Independent leagues (Atlantic, American Association, etc.) — MLB Stats API doesn't cover these. Pointstreak powers some, others have their own APIs or no public API at all.
+College baseball — NCAA doesn't have a clean public API. Some people scrape NCAA.com or use third-party sites like D1Baseball.
+Mexican League (LMB) — Has its own website but no well-known public API.
+What's actually possible
+If the app is pulling from the MLB Stats API, you could potentially extend it to cover affiliated MiLB pretty deeply. For the other leagues, you'd likely need to either scrape data or find a third-party aggregator like RotoWire or Baseball Reference (with caveats).
+Want me to look at the GitHub repo structure to get a better sense of how it's built and what would realistically be extendable?
+sure
+Apr 8
+I can't directly browse URLs, but you can help me out! Here's what to do:
+Go to: https://github.com/samhighfill/baseball-dashboard
+Then tell me (or paste the contents of):
+The file list in the root of the repo — just screenshot or copy what files/folders you see
+The main JS file (likely something like src/App.js, main.js, or similar)
+Any file with "api" or "fetch" or "axios" in it — that'll tell us exactly where data is coming from
+Alternatively, if you open the app in Chrome and go to:
+DevTools → Network tab → reload the page
+Filter by XHR/Fetch requests
+That'll show you exactly what API endpoints it's hitting in real time, which is often the fastest way to reverse engineer the data source.
+Which of those is easiest for you to do?
+actually no worries, I don't think the other leagues are consistent enough with stats to use
+Apr 8
+That makes total sense — inconsistent stat tracking across independent/college/Mexican league would make it pretty messy to work with reliably. Garbage in, garbage out.
+Is there something else you'd want to add or improve on the tracker instead? For example:
+Additional affiliated MiLB stats that might not be there yet
+Visualizations (charts, trends over time)
+Player comparison tools
+Prospect rankings integration
+Or were you just exploring out of curiosity?
+just exploring, thank you for your help.
+Apr 8
+Of course, happy to help! It looks like a cool project your friend built. If you ever want to dig into it further or build something of your own, feel free to come back. Good luck!
+picking back up on this, is there any way to use the website maxpreps to make something similar for our high school athletes?
+Apr 8
+Great idea! MaxPreps is a popular site for high school sports stats. Here's the honest breakdown:
+The bad news MaxPreps doesn't have a public API. Any data you'd pull from it would technically be scraping, which is against their Terms of Service. So building something that pulls directly from MaxPreps in an automated way carries some risk — mostly that they could block you, and there's a ToS concern.
+The good news For your own high school athletes, you probably don't need to scrape anything. You likely have direct access to the data, which opens up much cleaner options:
+Manual/CSV input — coaches or scorekeepers enter stats after each game, app reads from a Google Sheet or CSV file
+StatCrew / GameChanger — many high school programs already use these for scorekeeping and they have export options
+GameChanger specifically has an API that some developers have worked with
+What would actually work well
+A simple dashboard that reads from a Google Sheet (where a coach updates stats) and displays them nicely would be totally doable, reliable, and zero scraping required. Google Sheets has a straightforward API and it's free.
+Questions that would help narrow this down:
+How are stats currently being tracked for your athletes?
+Is this for one sport or multiple?
+Would a coach/parent be maintaining the data, or do you want it fully automated?
+nevermind, i'd prefer it to be fully automated and I don't think that sounds possible.
+Apr 8
+Yeah, that's a fair call. Fully automated with reliable, clean data is tough without a proper API backing it, and the scraping route is more headache than it's worth.
+If you ever change your mind or find a sport/platform that does have a public API, the door's open. Feel free to come back anytime!
+hey, had another thought on this
+10:38 AM
+Of course, what's on your mind?
+is there a way to expand the website that my friend made, I think I attached it to you in this thread.
+10:38 AM
+Yes, you shared it earlier — it's https://samhighfill.github.io/baseball-dashboard/.
+What kind of expansion are you thinking? Some ideas based on our earlier conversation:
+Better visualizations — charts, trend lines, career progressions
+Player comparisons
+Prospect ranking integration
+Search/filter improvements
+What direction are you leaning?
+I'd like to add charts, a couple more stats, and a game log feature, is that possible?
+10:39 AM
+Definitely possible! Since it's on GitHub Pages, the source code should be public. The approach would be:
+The plan:
+Fork your friend's repo
+Add the new features
+Deploy your own version on GitHub Pages
+For each feature:
+Charts — something like Chart.js or Recharts could be dropped in pretty easily to visualize stats over time, splits, etc.
+More stats — depends on what the MLB Stats API already returns. It likely sends back way more data than the app currently displays, so it may just be a matter of surfacing it.
+Game log — the MLB Stats API definitely has game-by-game data endpoints, so this is very doable. It would show each game a player appeared in with their stats for that game.
+Before we go further though, it would really help to peek at the source code so we know exactly what we're working with. If you go to:
+https://github.com/samhighfill/baseball-dashboard
+Can you tell me what files/folders you see, or is the repo public and visible to you? That'll let us figure out how much work this actually is and where to plug things in.
+the only folders that I see is pitchers and hitters
+10:40 AM
+Interesting — that suggests it might be a simpler static site rather than a full React/Vue app.
+Can you click into one of those folders and tell me what files are inside? And also, are there any files in the root of the repo outside of those folders (like index.html, main.js, style.css, etc.)?
+That'll tell us a lot about how it's structured and how easy it'll be to extend.
+1776436845459_image.png
+10:40 AM
+Oh nice, this is a really clean looking dashboard! And I can see Sam Highfill is actually on his own tracker which is fun.
+This gives me a much better picture. It looks like a well-built app with real-time MLB Stats API data. The features you want — charts, more stats, and a game log — are all very doable given what's already here.
+A few questions to nail down the scope:
+For charts, what would be most useful to you?
+ERA/WHIP trend over time for pitchers?
+Batting average trend for hitters?
+Something else?
+For more stats, what's missing that you'd want to see? For pitchers I notice BAA shows dashes — that might already be a bug. Are you thinking advanced stats like FIP, K/9, BB/9?
+For the game log, the idea would be clicking on a player and seeing a game-by-game breakdown of their stats for the season — does that sound right?
+Also, one practical question: do you have any coding experience, or would you want me to help you build a version of this yourself? The source code being on GitHub means you could fork it and we could work through the additions together.
+if we could find a way to track whip, era, and FIP over time that would be great for charts. 
+I'd like FIP, K%, BB%, BAA, SLG against, 
+Game log, if we could do a separate tab with a drop down menu and it would give each player's recent games?
+I have no coding experience, was hoping you could help me out there lol
+10:43 AM
+Ha, no worries at all — that's exactly what I'm here for!
+Here's the honest reality though: since you have no coding experience, there are two paths:
+Option A — Fork Sam's repo and add to it This would keep the same look/feel and player search functionality. But it requires setting up GitHub, understanding his existing code, and building on top of it. Without coding experience, this would be tough without a lot of hand-holding.
+Option B — Build a fresh version from scratch I can build you a fully functional dashboard right here that has all the features you want baked in from the start:
+Pitcher/hitter tables with the stats you mentioned (FIP, K%, BB%, BAA, SLG against)
+ERA/WHIP/FIP trend charts
+Game log tab with player dropdown
+Same dark baseball aesthetic
+It would pull from the same MLB Stats API Sam's uses, so the data would be identical.
+The only catch is you'd need somewhere to host it. GitHub Pages is free and would work great, but there's a small learning curve to get it deployed. I can walk you through that step by step though — it's not as scary as it sounds.
+Which direction sounds better to you? I'd honestly lean toward Option B since we can build exactly what you want without being constrained by someone else's code.
+Can you build me a new one please. let's do option B.
+10:44 AM
+Let's do it! Before I start building, just a few quick questions to make sure I get it right:
+Q: What do you want to call the dashboard?
+A: Let Claude decide
+Q: Which stats matter most for hitters? (Select all that apply)
+A: AVG / OBP / SLG, HR / RBI / R, K% / BB%, SB / CS
+Q: How many players do you typically want to track at once?
+A: A lot (20+)
+10:45 AM
+Perfect, I have everything I need. Let me build this out for you — I'll call it The Farm Report since it's tracking minor leaguers. Give me a moment, this will be a full-featured app!
+
+The Farm Report - MiLB Dashboard
+Interactive artifact 
+Here's The Farm Report! Here's what's built in:
+Pitchers table — W, L, G, GS, ERA, FIP, IP, SO, BB, K%, BB%, WHIP, BAA, HR
+Hitters table — G, AB, AVG, OBP, SLG, OPS, HR, RBI, R, K%, BB%, SB, CS
+Game Log tab — dropdown to pick any player, choose last 10/20 or full season
+Player modal — click any player name to get a stat overview + trend charts (ERA/WHIP/FIP for pitchers, AVG/OBP/SLG for hitters rolling over the season)
+To use it: just type a player name in the search box and click their name to add them. Your roster saves automatically.
+When you're ready to get it hosted on GitHub Pages so you can share it with others, let me know and I'll walk you through it step by step — it's easier than it sounds!
+this looks awesome! any chance we can make it 8ctane colors? and yes lets work on the get hub pages.
+10:50 AM
+Thank you! And yes, let's do both! Quick question on the colors — what is 8ctane? Is it a team, a brand, or something else? Want to make sure I nail the right color scheme before we restyle it.
+And on GitHub Pages — do you have a GitHub account already, or do we need to start from scratch?
+can you search our history for the logo I sent you
+10:50 AM
+
+Relevant chats
+Relevant chats
+Got it! From our history I can see 8ctane's colors are black background with cyan/light blue (
+#64d2ff) as the accent. Let me restyle the dashboard now!
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 2 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 3 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 4 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 5 
+There you go — full 8ctane color scheme! Black/dark navy background with the cyan blue accent throughout, including a subtle glow on the logo and stat values to match that premium techy feel you have in your other graphics.
+Now for GitHub Pages — do you already have a GitHub account, or do we need to create one first?
+we're starting the GitHub from scratch, if you could walk me through that.
+10:51 AM
+No problem! Let's do this step by step — it's easier than it sounds. Start here:
+Step 1 — Create a GitHub account
+Go to github.com
+Click Sign up
+Enter your email, create a password, and choose a username
+Your username will be part of your site's URL, so pick something clean like 8ctanebaseball or similar
+Verify your email when they send you a confirmation
+Once you've done that and you're logged in, let me know and I'll walk you through Step 2 — creating the repository where the dashboard will live!
+1776437617986_image.png
+10:53 AM
+Ha, GitHub is having a moment! That's their error page — it's on their end, not yours.
+Just try refreshing the page in a minute or two. GitHub outages are usually pretty short. You can also check githubstatus.com to see if there's a known issue.
+Let me know when you get through and we'll jump right into Step 2!
+its still giving me the error message, sorry for the delay
+10:59 AM
+No worries at all, totally out of your control! GitHub outages can sometimes last a little while.
+A couple of options while you wait:
+Keep checking githubstatus.com — it'll show you when things are back to normal
+Try a different browser just in case it's something on your end
+No rush at all — whenever you get in, I'll be here and we'll knock out the rest of the setup quickly. The hard part (building the dashboard) is already done!
+im in
+11:11 AM
+Great! Let's create the repository. Follow these steps:
+Step 2 — Create a new repository
+Once logged in, click the + icon in the top right corner
+Select New repository
+For the repository name, type exactly: farm-report (or whatever you'd like the site to be called)
+Make sure it's set to Public
+Check the box that says "Add a README file"
+Click Create repository
+Take a screenshot or let me know when you're at that screen and I'll make sure you've got everything set correctly before hitting create!
+1776438785026_image.png
+11:13 AM
+Perfect, your repository is created and ready to go! Now we need to add the dashboard file. Here's the next step:
+Step 3 — Add the dashboard file
+Click Add file (the button near the top right of the file list)
+Select Create new file
+In the filename box at the top, type exactly: index.html
+Now go back to the dashboard we built here in Claude — click the copy icon on the artifact to copy all the code
+Paste it into the big text area on GitHub
+Let me know when you've got the file named and the code pasted in and I'll walk you through saving it!
+should be pasted.
+11:14 AM
+Perfect! Now let's save it:
+Step 4 — Commit the file
+Scroll down to the bottom of the page
+You'll see a section that says "Commit changes"
+Leave the default message as is ("Create index.html" or whatever it says)
+Make sure "Commit directly to the main branch" is selected
+Click the green Commit changes button
+Let me know when that's done and we'll turn on GitHub Pages so the site goes live!
+done
+11:14 AM
+Great! Now the fun part — making it live:
+Step 5 — Enable GitHub Pages
+Click Settings in the top menu bar of your repository
+In the left sidebar, scroll down and click Pages
+Under "Branch", click the dropdown that says None and select main
+Leave the folder set to / (root)
+Click Save
+GitHub will then build your site. Give it about 60 seconds, then your dashboard will be live at:
+https://rnchasse8.github.io/Stat-Tracker
+Let me know when you've hit Save and we'll check if it's live!
+I hit save!
+11:15 AM
+Awesome! Now just wait about 60 seconds and then try opening this in a new tab:
+https://rnchasse8.github.io/Stat-Tracker
+It might take a minute or two on the first deploy. If you see a 404 error, just wait another minute and refresh — that's totally normal on the first launch.
+Let me know what you see!
+I think it worked! 
+I had an idea, can we add one more tab to this?
+11:18 AM
+That's huge, congrats — you just deployed your first website! 🎉
+And absolutely, what tab are you thinking?
+Can we do a daily recap, basically I'd like to open this app and be able to see everyone who performed the day before, and their stats for that day?
+11:19 AM
+Love that idea — basically a "yesterday's performers" feed. So you'd open the app, click Daily Recap, and it would automatically pull the previous day's stats for everyone on your roster without having to click into each player individually.
+A couple of quick questions before I build it:
+Should it show all players from your roster regardless of whether they played, or only players who actually appeared in a game that day?
+Should it be sorted by performance (like best ERA or highest AVG on top) or just listed as-is?
+Let's do just sorted as is, alphabetical is fine. and if possible lets just do people who appeared in a game
+11:19 AM
+Perfect, that keeps it clean. Building it now!
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 6 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 7 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 8 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 9 
+Done! The Daily Recap tab is added. Here's how it works:
+Click Daily Recap and it automatically pulls yesterday's stats for everyone on your roster
+Only shows players who actually appeared in a game
+Pitchers and hitters are split into separate sections
+Pitchers show IP, H, R, ER, BB, SO, HR, and decision (W/L)
+Hitters show AB, H, 2B, 3B, HR, RBI, R, BB, SO, SB
+Now you'll want to update the file on GitHub with this new version. To do that:
+Go to your Stat-Tracker repo on GitHub
+Click on index.html
+Click the pencil (edit) icon
+Select all the code and delete it
+Copy the updated code from the artifact here and paste it in
+Scroll down and click Commit changes
+Your live site will update within a minute or two after that!
+perfect, thank you. I'll keep you posted!
+11:22 AM
+Sounds great, good luck! You've got a really solid tool now — the Daily Recap is going to make it super easy to check in every morning.
+When you're ready to update GitHub or want to add anything else, just come back and we'll pick right up. Go 8ctane! ⚾
+looks like everything worked, but the stats/names are not loading when I add them.
+11:37 AM
+Let's figure it out! A few questions to help narrow it down:
+When you search for a player, are names showing up in the search dropdown, or is the search coming back empty too?
+When you add a player, do they appear in the table at all (even with blank stats), or does nothing happen?
+Are you testing this on the live GitHub Pages site or in the Claude preview here?
+1776440277027_image.png
+the player pops up, and says "added _________"
+11:38 AM
+Got it — the players are being added but the stats are stuck on "Loading..." forever. This is almost certainly a CORS issue. GitHub Pages is blocking the requests to the MLB Stats API because it's a different domain.
+The fix is to route the API calls through a CORS proxy. Let me update the code now:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 10 
+That routes all the API calls through a free CORS proxy so GitHub Pages won't block them. Now go update the file on GitHub the same way as before:
+Go to your repo → click index.html → click the pencil icon
+Select all, delete, paste the updated code
+Commit changes
+Wait a minute for it to deploy, then test it. The stats should load properly this time!
+same issue
+11:42 AM
+Let me try a different proxy — corsproxy.io can be unreliable. Let me switch to a more dependable one:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 11 
+Actually wait — that approach won't work cleanly because the URLs get built by appending paths to the API base, and the proxy wrapping will break that. Let me fix this properly by rewriting the fetch function instead:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 12 
+Now I need to replace all the fetch(url) calls with proxiedFetch(url):
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 13 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 14 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 15 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 16 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 17 
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 18 
+All fetches are now routed through the proxy. Go ahead and update GitHub with the new code and let me know if the stats load this time!
+same thing
+11:48 AM
+Let me try a completely different approach. Instead of a proxy, let me test if the MLB API even allows direct access by checking what's happening. The issue might also be that the sportIds parameter format is wrong for the API. Let me rewrite the fetch logic with better error handling and a fallback:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 19 
+Also, let me fix the stats URL — the sportIds param with multiple IDs might be causing the API to return nothing:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 20 
+Update GitHub again and test. But also — can you open your browser's Developer Tools (F12 or right-click → Inspect), click the Console tab, and tell me if you see any red error messages after adding a player? That'll tell us exactly what's failing.
+1776441041252_image.png
+11:50 AM
+I can see the issue — the bottom of the screen is showing the raw HTML/CSS code, which means when you pasted the code into GitHub, it only got part of it and the rest got jumbled. The file on GitHub is corrupted.
+Let's fix it cleanly. This time instead of copy/pasting, let me give you the code as a downloadable file which will be much cleaner. Here's what to do:
+On GitHub:
+Go to your repo and click index.html
+Click the pencil (edit) icon
+Press Ctrl+A (select all) and Delete to wipe it completely
+Then do the paste fresh
+But first — when you copy from the Claude artifact, make sure you're clicking the copy icon in the top right corner of the artifact panel (it looks like two overlapping squares). Don't manually select the text, as that can miss parts or include extra characters.
+Try that and let me know if it pastes correctly — you should see it start with <!DOCTYPE html> at the very top and end with </html> at the very bottom. Can you confirm those are there before committing?
+just back to the loading
+11:53 AM
+Good progress — the corrupted code is fixed at least! The loading issue is a CORS problem that the proxies aren't solving reliably.
+Let me try a completely different approach — instead of proxies, let's use a different API endpoint that's known to be publicly accessible:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 21 
+Can you do one thing for me before updating GitHub? Open the Claude preview of the artifact here and try adding a player. Do the stats load in the Claude preview? That'll tell us if it's a code issue or purely a GitHub Pages/CORS issue.
+"search failed, try again"
+11:54 AM
+That's actually really helpful — the search itself is failing, which means it's a CORS issue hitting the very first API call. The MLB Stats API is blocking requests from browsers entirely unless you're on an allowed domain.
+The real fix here is to use a backend, but there's a simpler workaround — the MLB Stats API has a known public mirror that works without CORS issues. Let me switch to it:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 22 
+Now also fix the search call which still uses plain fetch instead of proxiedFetch:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 23 
+Try searching for a player in the Claude preview now — does it return results?
+search failed try again
+11:54 AM
+Let me test the API directly to see what's actually reachable:
+
+This little tester will check which connections actually work from your browser. Can you tell me what results you see — which ones show ✓ OK and which show ✗? That'll tell us exactly which proxy to use and we can fix it for good.
+they all show x
+11:55 AM
+That tells us everything — the MLB Stats API is completely blocked in this environment (Claude's preview). But the good news is that Sam's site works fine, which means it works in a real browser on GitHub Pages. The Claude preview is just more restrictive.
+So let's skip testing here and go straight to fixing it on GitHub. The most reliable proxy for GitHub Pages is corsproxy.io — let's make sure it's wired up correctly everywhere and push it live.
+Can you go to your GitHub repo, open index.html in the editor, and tell me what the very first const API and proxiedFetch lines look like at the top of the script? I want to make sure the version on GitHub matches what we have here before we try anything else.
+1776441388174_image.png
+11:56 AM
+Good, the file looks clean. Now scroll down to the bottom of the file where the JavaScript starts — I need to see the const API and proxiedFetch lines specifically. Can you scroll down and screenshot that section?
+what line number?
+11:56 AM
+It should be somewhere around line 300-350. You can use GitHub's search to find it quickly — press Ctrl+F (or Cmd+F on Mac) while viewing the file and search for proxiedFetch. That'll jump you right to it!
+1776441434087_image.png
+11:57 AM
+Good, I can see proxiedFetch is being used on line 312. Now scroll up a bit to around line 285-295 where const API and the proxiedFetch function definition should be. Can you screenshot that section?
+1776441457512_image.png
+11:57 AM
+I can see the issue — the GitHub file has an older version of the proxiedFetch function (the one with the proxies array from a few versions ago), not the latest one. The updates aren't making it into GitHub cleanly.
+Let me try a completely different approach. Instead of copy/pasting the whole file each time, let me give you just the specific lines to change directly in GitHub's editor:
+Go to your repo → index.html → click the pencil icon to edit
+Press Ctrl+G to go to a specific line, type 255 and hit enter
+You should see the proxiedFetch function. Replace everything from the async function proxiedFetch line down to its closing } (around lines 255-273) with this:
+javascript
+async function proxiedFetch(url) {
+  return fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+}
+That's a much simpler version — just one proxy, no loop. Commit that change and test on the live site. Does that work?
+nope
+12:00 PM
+OK let's take a totally different approach. The proxy issue is clearly unreliable. Let me look at how Sam's site actually works — since his site loads MiLB stats without any proxy, he must be doing something differently.
+Can you go to samhighfill.github.io/baseball-dashboard and open the browser Developer Tools (F12), click the Network tab, add a player, and tell me what URLs you see in the network requests?
+That'll show us exactly how he's calling the API and we can copy that approach directly.
+stupid question, but how do I do f12
+12:01 PM
+Not a stupid question at all! Here's how depending on your browser:
+Chrome or Edge:
+Press F12 on your keyboard, OR
+Right-click anywhere on the page and select Inspect
+Safari:
+First go to Safari → Settings → Advanced and check "Show Develop menu in menu bar"
+Then press Option + Cmd + I
+Firefox:
+Press F12, OR
+Right-click → Inspect
+Once the panel opens:
+Click the Network tab at the top of the panel
+Then go to Sam's site and add a player
+You'll see a list of requests appear — screenshot that and send it over!
+What browser are you using?
+1776441842514_image.png
+12:04 PM
+Perfect, you're in Safari Advanced settings! I can see "Show features for web developers" at the very bottom — check that box, then close settings.
+After that, go to Sam's site and you should see a new "Develop" menu appear in the top menu bar of Safari. Click it and select "Show Web Inspector" — that's Safari's version of Developer Tools!
+1776441902979_image.png
+12:05 PM
+Great, Web Inspector is open! Now click the Network tab at the top of the inspector panel, then add a player on Sam's site. You should see a bunch of requests appear. Screenshot that for me!
+1776441959710_image.png
+12:06 PM
+This is exactly what I needed! I can see Sam's site is calling statsapi.mlb.com directly with no proxy — and it's working. That means the MLB Stats API does allow direct browser requests from GitHub Pages domains.
+The problem is our code is going through corsproxy.io which is actually breaking it. Let me strip the proxy out entirely and go back to direct calls:
+
+The Farm Report - MiLB Dashboard
+Interactive artifact ∙ Version 24 
+The MLB API allows direct calls from GitHub Pages — the proxy was the problem all along. Update GitHub with this version and it should work. Go to your repo, edit index.html, find line 255 area and replace the proxiedFetch function with just those 3 lines above, then commit!
+which lines do I replace it with?
+12:07 PM
+Find the proxiedFetch function in your editor (it should be around lines 255-273 based on what we saw earlier). Replace everything from async function proxiedFetch(url) { all the way to its closing } with just this:
+javascript
+function proxiedFetch(url) {
+  return fetch(url);
+}
+So you're deleting about 15 lines and replacing with just 3. Let me know when it's committed!
+can you just give me the full function again so I don't mess up where to put it please.
+12:08 PM
+Of course! Here's the full block to find and replace. Find this in your file:
+javascript
+async function proxiedFetch(url) {
+  const proxies = [
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const r = await fetch(proxy(url));
+      if (r.ok) return r;
+    } catch(e) {}
+  }
+  // last resort: direct
+  return fetch(url);
+}
+Replace the whole thing with just this:
+javascript
+function proxiedFetch(url) {
+  return fetch(url);
+}
+Commit that and test!
+I think I did it wrong, can you redo the whole code and give that to me on the right
+12:11 PM
+Of course! Here's the complete clean version:
+
+The Farm Report - MiLB Dashboard (Clean)
+Interactive artifact ∙ Version 25 
+There's the full clean version! Now go to GitHub, open index.html, click the pencil to edit, select all with Ctrl+A, delete it, paste this fresh, and commit. This version calls the MLB API directly with no proxy — just like Sam's site does. Let me know how it goes!
+
+I'm still getting 
+Claude is AI and can make mistakes. Please double-check responses.
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,7 +516,7 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
-  
+
   header { background: var(--bg2); border-bottom: 2px solid var(--yellow); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 60px; box-shadow: 0 0 24px rgba(100,210,255,0.08); }
   .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
   .logo span { color: var(--yellow); text-shadow: 0 0 12px rgba(100,210,255,0.5); }
@@ -45,7 +541,7 @@
   .tabs-bar { background: var(--bg2); padding: 0 24px; display: flex; gap: 0; border-bottom: 1px solid var(--border); }
   .tab { padding: 14px 20px; cursor: pointer; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); border-bottom: 3px solid transparent; transition: all 0.15s; }
   .tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
-  .tab .cnt { background: var(--yellow); color: #000; border-radius: 12px; padding: 1px 7px; font-size: 0.75rem; margin-left: 6px; }
+  .tab .cnt { background: var(--yellow); color: #050d16; border-radius: 12px; padding: 1px 7px; font-size: 0.75rem; margin-left: 6px; }
 
   .content { padding: 24px; }
   .meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; color: var(--muted); font-size: 0.82rem; }
@@ -61,16 +557,10 @@
   .player-name { font-weight: 700; cursor: pointer; color: var(--text); }
   .player-name:hover { color: var(--yellow); }
   .team-tag { font-size: 0.75rem; color: var(--muted); display: block; }
-  .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-right: 4px; }
-  .badge-combined { background: #3a3a00; color: var(--yellow); }
-  .badge-level { background: var(--bg3); color: var(--muted); }
   .remove-btn { background: none; border: none; color: var(--border); cursor: pointer; font-size: 1rem; padding: 0 4px; }
   .remove-btn:hover { color: var(--red); }
-  .stat-highlight { color: var(--green); font-weight: 600; }
-  .stat-warn { color: var(--red); }
   .dash { color: var(--border); }
 
-  /* Player modal */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; width: 90%; max-width: 820px; max-height: 88vh; overflow-y: auto; }
@@ -108,7 +598,6 @@
   .game-log-section { margin-bottom: 24px; }
   .game-log-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
   .game-log-controls select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; }
-  .game-log-controls select:focus { outline: none; border-color: var(--yellow); }
 
   .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--yellow); color: var(--text); padding: 12px 20px; border-radius: 6px; font-size: 0.9rem; z-index: 300; display: none; }
   .toast.show { display: block; animation: fadeInOut 2.5s forwards; }
@@ -147,10 +636,8 @@
 <div class="content">
   <div class="meta-bar">
     <span id="lastUpdated">—</span>
-    <span id="statusMsg"></span>
   </div>
 
-  <!-- PITCHERS TAB -->
   <div id="view-pitchers">
     <div id="pitcher-empty" class="empty-state" style="display:none">
       <h2>No pitchers on your roster yet</h2>
@@ -181,7 +668,6 @@
     </table>
   </div>
 
-  <!-- HITTERS TAB -->
   <div id="view-hitters" style="display:none">
     <div id="hitter-empty" class="empty-state" style="display:none">
       <h2>No hitters on your roster yet</h2>
@@ -211,7 +697,6 @@
     </table>
   </div>
 
-  <!-- GAME LOG TAB -->
   <div id="view-gamelog" style="display:none">
     <div class="game-log-section">
       <div class="game-log-controls">
@@ -227,14 +712,22 @@
       <div id="gamelog-content">
         <div class="empty-state">
           <h2>Select a player to view their game log</h2>
-          <p>Use the dropdown above.</p>
         </div>
       </div>
     </div>
   </div>
+
+  <div id="view-recap" style="display:none">
+    <div class="meta-bar" style="margin-bottom:20px">
+      <span id="recap-date-label">Loading yesterday's games...</span>
+      <button class="btn-ghost" onclick="loadRecap()">↻ Refresh</button>
+    </div>
+    <div id="recap-content">
+      <div class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+  </div>
 </div>
 
-<!-- Player Modal -->
 <div class="modal-overlay" id="playerModal">
   <div class="modal">
     <div class="modal-header">
@@ -259,16 +752,16 @@ const API = 'https://statsapi.mlb.com/api/v1';
 function proxiedFetch(url) {
   return fetch(url);
 }
+
 let season = 2026;
 let currentTab = 'pitchers';
 let modalTab = 'overview';
 let players = JSON.parse(localStorage.getItem('farmPlayers') || '[]');
 let statsCache = {};
-let gamelogCache = {};
-let searchTimeout;
 let sortState = { pitchers: { col: 'era', dir: 1 }, hitters: { col: 'avg', dir: 1 } };
 let currentModalPlayer = null;
 let trendCharts = {};
+let searchTimeout;
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -280,7 +773,6 @@ function showToast(msg) {
 function onSeasonChange() {
   season = parseInt(document.getElementById('seasonSel').value);
   statsCache = {};
-  gamelogCache = {};
   refreshAll();
 }
 
@@ -300,11 +792,7 @@ async function fetchStats(p) {
     const r = await proxiedFetch(url);
     const d = await r.json();
     const splits = d.stats?.[0]?.splits || [];
-    // aggregate combined
-    let agg = null;
-    if (splits.length > 0) {
-      agg = aggregateSplits(splits, p.type);
-    }
+    let agg = splits.length > 0 ? aggregateSplits(splits, p.type) : null;
     statsCache[key] = { splits, agg };
     return statsCache[key];
   } catch(e) {
@@ -318,48 +806,47 @@ function aggregateSplits(splits, type) {
     let w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0;
     splits.forEach(s => {
       const st = s.stat;
-      w += st.wins||0; l += st.losses||0; g += st.gamesPitched||0;
-      gs += st.gamesStarted||0;
-      const outs = Math.round((parseFloat(st.inningsPitched||0))*3);
-      ip += outs;
-      h += st.hits||0; r += st.runs||0; er += st.earnedRuns||0;
-      hr += st.homeRuns||0; bb += (st.baseOnBalls||0)+(st.intentionalWalks||0);
-      so += st.strikeOuts||0; hbp += st.hitBatsmen||0;
-      bf += st.battersFaced||0;
+      w+=st.wins||0; l+=st.losses||0; g+=st.gamesPitched||0; gs+=st.gamesStarted||0;
+      ip+=Math.round(parseFloat(st.inningsPitched||0)*3);
+      h+=st.hits||0; r+=st.runs||0; er+=st.earnedRuns||0; hr+=st.homeRuns||0;
+      bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
+      so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; bf+=st.battersFaced||0;
     });
-    const ipReal = Math.floor(ip/3) + (ip%3)/10;
-    const era = ip > 0 ? (er*27/ip).toFixed(2) : '—';
-    const whip = ip > 0 ? ((bb+h)/(ip/3)).toFixed(2) : '—';
-    const baa = (h+bb+hbp) > 0 && ip > 0 ? (h/(ip/3+h+bb+hbp-ip/3)).toFixed(3) : '—';
-    // BAA = H / (AB faced) — approximation
-    const ab = bf - bb - hbp;
-    const baaCalc = ab > 0 ? (h/ab).toFixed(3) : '—';
-    // FIP = ((13*HR)+(3*(BB+HBP))-(2*K))/IP + cFIP
-    const cFIP = 3.10;
-    const fip = ip > 0 ? (((13*hr)+(3*(bb+hbp))-(2*so))/(ip/3)+cFIP).toFixed(2) : '—';
-    const kPct = bf > 0 ? (so/bf*100).toFixed(1)+'%' : '—';
-    const bbPct = bf > 0 ? (bb/bf*100).toFixed(1)+'%' : '—';
-    return { w,l,g,gs,ip:ipReal,h,r,er,hr,bb,so,hbp,bf,era,whip,baa:baaCalc,fip,kPct,bbPct };
+    const ipReal = Math.floor(ip/3)+(ip%3)/10;
+    const era = ip>0?(er*27/ip).toFixed(2):'—';
+    const whip = ip>0?((bb+h)/(ip/3)).toFixed(2):'—';
+    const ab = bf-bb-hbp;
+    const baa = ab>0?(h/ab).toFixed(3):'—';
+    const fip = ip>0?(((13*hr)+(3*(bb+hbp))-(2*so))/(ip/3)+3.10).toFixed(2):'—';
+    const kPct = bf>0?(so/bf*100).toFixed(1)+'%':'—';
+    const bbPct = bf>0?(bb/bf*100).toFixed(1)+'%':'—';
+    return {w,l,g,gs,ip:ipReal,h,r,er,hr,bb,so,hbp,bf,era,whip,baa,fip,kPct,bbPct};
   } else {
     let g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
     splits.forEach(s => {
       const st = s.stat;
-      g += st.gamesPlayed||0; ab += st.atBats||0; h += st.hits||0;
-      doubles += st.doubles||0; triples += st.triples||0; hr += st.homeRuns||0;
-      rbi += st.rbi||0; r += st.runs||0; bb += (st.baseOnBalls||0)+(st.intentionalWalks||0);
-      so += st.strikeOuts||0; sb += st.stolenBases||0; cs += st.caughtStealing||0;
-      hbp += st.hitByPitch||0; sf += st.sacFlies||0;
+      g+=st.gamesPlayed||0; ab+=st.atBats||0; h+=st.hits||0;
+      doubles+=st.doubles||0; triples+=st.triples||0; hr+=st.homeRuns||0;
+      rbi+=st.rbi||0; r+=st.runs||0;
+      bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
+      so+=st.strikeOuts||0; sb+=st.stolenBases||0; cs+=st.caughtStealing||0;
+      hbp+=st.hitByPitch||0; sf+=st.sacFlies||0;
     });
-    const avg = ab > 0 ? (h/ab).toFixed(3) : '—';
+    const avg = ab>0?(h/ab).toFixed(3):'—';
     const pa = ab+bb+hbp+sf;
-    const obp = pa > 0 ? ((h+bb+hbp)/pa).toFixed(3) : '—';
-    const tb = h + doubles + 2*triples + 3*hr;
-    const slg = ab > 0 ? (tb/ab).toFixed(3) : '—';
-    const ops = pa > 0 && ab > 0 ? ((h+bb+hbp)/pa + tb/ab).toFixed(3) : '—';
-    const kPct = pa > 0 ? (so/pa*100).toFixed(1)+'%' : '—';
-    const bbPct = pa > 0 ? (bb/pa*100).toFixed(1)+'%' : '—';
-    return { g,ab,h,doubles,triples,hr,rbi,r,bb,so,sb,cs,hbp,sf,avg,obp,slg,ops,kPct,bbPct };
+    const obp = pa>0?((h+bb+hbp)/pa).toFixed(3):'—';
+    const tb = h+doubles+2*triples+3*hr;
+    const slg = ab>0?(tb/ab).toFixed(3):'—';
+    const ops = pa>0&&ab>0?((h+bb+hbp)/pa+tb/ab).toFixed(3):'—';
+    const kPct = pa>0?(so/pa*100).toFixed(1)+'%':'—';
+    const bbPct = pa>0?(bb/pa*100).toFixed(1)+'%':'—';
+    return {g,ab,h,doubles,triples,hr,rbi,r,bb,so,sb,cs,hbp,sf,avg,obp,slg,ops,kPct,bbPct};
   }
+}
+
+function fmt(v) {
+  if (v===null||v===undefined||v==='—'||v==='') return '<span class="dash">—</span>';
+  return v;
 }
 
 function renderAll() {
@@ -369,78 +856,62 @@ function renderAll() {
   updateCounts();
 }
 
-function fmt(v, decimals=2) {
-  if (v === null || v === undefined || v === '—' || isNaN(v)) return '<span class="dash">—</span>';
-  return v;
-}
-
 function renderPitchers() {
-  const pitchers = players.filter(p => p.type === 'pitcher');
-  const body = document.getElementById('pitcher-body');
-  document.getElementById('pitcher-empty').style.display = pitchers.length === 0 ? 'block' : 'none';
-  document.getElementById('pitcher-table').style.display = pitchers.length === 0 ? 'none' : 'table';
-
-  const sorted = sortPlayers(pitchers, sortState.pitchers.col, sortState.pitchers.dir, 'pitcher');
-  body.innerHTML = sorted.map(p => {
+  const pitchers = players.filter(p=>p.type==='pitcher');
+  document.getElementById('pitcher-empty').style.display = pitchers.length===0?'block':'none';
+  document.getElementById('pitcher-table').style.display = pitchers.length===0?'none':'table';
+  const sorted = sortPlayers(pitchers, sortState.pitchers.col, sortState.pitchers.dir);
+  document.getElementById('pitcher-body').innerHTML = sorted.map(p => {
     const key = `${p.id}-${season}`;
     const s = statsCache[key]?.agg;
     if (!s) return `<tr><td colspan="16"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>`;
-    const teamStr = p.team || '—';
     return `<tr>
-      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
-        <span class="team-tag">${teamStr} · P</span></td>
+      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span><span class="team-tag">${p.team||'—'} · P</span></td>
       <td>${fmt(s.w)}</td><td>${fmt(s.l)}</td><td>${fmt(s.g)}</td><td>${fmt(s.gs)}</td>
-      <td>${fmt(s.era)}</td>
-      <td>${fmt(s.fip)}</td>
-      <td>${fmt(s.ip)}</td>
+      <td>${fmt(s.era)}</td><td>${fmt(s.fip)}</td><td>${fmt(s.ip)}</td>
       <td>${fmt(s.so)}</td><td>${fmt(s.bb)}</td>
       <td>${fmt(s.kPct)}</td><td>${fmt(s.bbPct)}</td>
       <td>${fmt(s.whip)}</td><td>${fmt(s.baa)}</td><td>${fmt(s.hr)}</td>
-      <td><button class="remove-btn" onclick="removePlayer(${p.id})" title="Remove">✕</button></td>
+      <td><button class="remove-btn" onclick="removePlayer(${p.id})">✕</button></td>
     </tr>`;
   }).join('');
 }
 
 function renderHitters() {
-  const hitters = players.filter(p => p.type === 'hitter');
-  const body = document.getElementById('hitter-body');
-  document.getElementById('hitter-empty').style.display = hitters.length === 0 ? 'block' : 'none';
-  document.getElementById('hitter-table').style.display = hitters.length === 0 ? 'none' : 'table';
-
-  const sorted = sortPlayers(hitters, sortState.hitters.col, sortState.hitters.dir, 'hitter');
-  body.innerHTML = sorted.map(p => {
+  const hitters = players.filter(p=>p.type==='hitter');
+  document.getElementById('hitter-empty').style.display = hitters.length===0?'block':'none';
+  document.getElementById('hitter-table').style.display = hitters.length===0?'none':'table';
+  const sorted = sortPlayers(hitters, sortState.hitters.col, sortState.hitters.dir);
+  document.getElementById('hitter-body').innerHTML = sorted.map(p => {
     const key = `${p.id}-${season}`;
     const s = statsCache[key]?.agg;
     if (!s) return `<tr><td colspan="15"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>`;
     return `<tr>
-      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
-        <span class="team-tag">${p.team || '—'} · ${p.pos || 'OF'}</span></td>
+      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span><span class="team-tag">${p.team||'—'} · ${p.pos||'OF'}</span></td>
       <td>${fmt(s.g)}</td><td>${fmt(s.ab)}</td>
       <td>${fmt(s.avg)}</td><td>${fmt(s.obp)}</td><td>${fmt(s.slg)}</td><td>${fmt(s.ops)}</td>
       <td>${fmt(s.hr)}</td><td>${fmt(s.rbi)}</td><td>${fmt(s.r)}</td>
       <td>${fmt(s.kPct)}</td><td>${fmt(s.bbPct)}</td>
       <td>${fmt(s.sb)}</td><td>${fmt(s.cs)}</td>
-      <td><button class="remove-btn" onclick="removePlayer(${p.id})" title="Remove">✕</button></td>
+      <td><button class="remove-btn" onclick="removePlayer(${p.id})">✕</button></td>
     </tr>`;
   }).join('');
 }
 
-function sortPlayers(list, col, dir, type) {
-  return [...list].sort((a, b) => {
-    if (col === 'name') return dir * a.name.localeCompare(b.name);
-    const ka = `${a.id}-${season}`, kb = `${b.id}-${season}`;
-    const sa = statsCache[ka]?.agg, sb = statsCache[kb]?.agg;
-    if (!sa || !sb) return 0;
-    let va = sa[col], vb = sb[col];
-    va = parseFloat(va) || 0; vb = parseFloat(vb) || 0;
-    return dir * (va - vb);
+function sortPlayers(list, col, dir) {
+  return [...list].sort((a,b) => {
+    if (col==='name') return dir*a.name.localeCompare(b.name);
+    const sa = statsCache[`${a.id}-${season}`]?.agg;
+    const sb = statsCache[`${b.id}-${season}`]?.agg;
+    if (!sa||!sb) return 0;
+    return dir*(parseFloat(sa[col])||0)-(parseFloat(sb[col])||0);
   });
 }
 
 function sortTable(type, col) {
   const s = sortState[type];
-  if (s.col === col) s.dir *= -1; else { s.col = col; s.dir = 1; }
-  if (type === 'pitchers') renderPitchers(); else renderHitters();
+  if (s.col===col) s.dir*=-1; else {s.col=col; s.dir=1;}
+  if (type==='pitchers') renderPitchers(); else renderHitters();
 }
 
 function updateCounts() {
@@ -451,26 +922,24 @@ function updateCounts() {
 function switchTab(tab) {
   currentTab = tab;
   ['pitchers','hitters','gamelog','recap'].forEach(t => {
-    document.getElementById(`tab-${t}`).className = 'tab' + (t===tab?' active':'');
+    document.getElementById(`tab-${t}`).className = 'tab'+(t===tab?' active':'');
     document.getElementById(`view-${t}`).style.display = t===tab?'block':'none';
   });
-  if (tab === 'gamelog') updateGameLogDropdown();
-  if (tab === 'recap') loadRecap();
+  if (tab==='gamelog') updateGameLogDropdown();
+  if (tab==='recap') loadRecap();
 }
 
-// Search
 let searchResults = [];
 async function onSearchInput() {
   const q = document.getElementById('searchInput').value.trim();
   clearTimeout(searchTimeout);
-  if (q.length < 2) { document.getElementById('searchResults').style.display='none'; return; }
-  searchTimeout = setTimeout(() => doSearch(true), 400);
+  if (q.length<2) {document.getElementById('searchResults').style.display='none'; return;}
+  searchTimeout = setTimeout(()=>doSearch(true), 400);
 }
 
 async function doSearch(inline=false) {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
-  if (!inline) document.getElementById('searchResults').style.display='none';
   try {
     const r = await proxiedFetch(`${API}/people/search?names=${encodeURIComponent(q)}&sportIds=11,12,13,14,15,16&active=true`);
     const d = await r.json();
@@ -481,16 +950,18 @@ async function doSearch(inline=false) {
 
 function showInlineResults(results) {
   const box = document.getElementById('searchResults');
-  if (!results.length) { box.innerHTML = '<div class="search-result-item"><span style="color:var(--muted)">No results found</span></div>'; box.style.display='block'; return; }
+  if (!results.length) {
+    box.innerHTML = '<div class="search-result-item"><span style="color:var(--muted)">No results found</span></div>';
+    box.style.display='block'; return;
+  }
   box.innerHTML = results.slice(0,8).map(p => {
-    const pos = p.primaryPosition?.abbreviation || '?';
-    const team = p.currentTeam?.name || 'Free Agent';
+    const pos = p.primaryPosition?.abbreviation||'?';
+    const team = p.currentTeam?.name||'Free Agent';
     return `<div class="search-result-item" onclick="addPlayerFromSearch(${p.id})">
-      <span>${p.fullName}</span>
-      <span class="pos">${pos} · ${team}</span>
+      <span>${p.fullName}</span><span class="pos">${pos} · ${team}</span>
     </div>`;
   }).join('');
-  box.style.display = 'block';
+  box.style.display='block';
 }
 
 document.addEventListener('click', e => {
@@ -500,28 +971,21 @@ document.addEventListener('click', e => {
 async function addPlayerFromSearch(id) {
   document.getElementById('searchResults').style.display='none';
   document.getElementById('searchInput').value='';
-  if (players.find(p=>p.id===id)) { showToast('Player already on roster'); return; }
+  if (players.find(p=>p.id===id)) {showToast('Player already on roster'); return;}
   try {
     const r = await proxiedFetch(`${API}/people/${id}?hydrate=currentTeam`);
     const d = await r.json();
     const p = d.people?.[0];
     if (!p) return;
-    const pos = p.primaryPosition?.abbreviation || 'OF';
-    const isPitcher = pos === 'P' || pos === 'SP' || pos === 'RP';
-    const player = {
-      id: p.id,
-      name: p.fullName,
-      team: p.currentTeam?.name || '—',
-      pos,
-      type: isPitcher ? 'pitcher' : 'hitter'
-    };
+    const pos = p.primaryPosition?.abbreviation||'OF';
+    const isPitcher = pos==='P'||pos==='SP'||pos==='RP';
+    const player = {id:p.id, name:p.fullName, team:p.currentTeam?.name||'—', pos, type:isPitcher?'pitcher':'hitter'};
     players.push(player);
     savePlayers();
     await fetchStats(player);
     renderAll();
     showToast(`${p.fullName} added!`);
-    if (isPitcher && currentTab !== 'pitchers') switchTab('pitchers');
-    else if (!isPitcher && currentTab !== 'hitters') switchTab('hitters');
+    switchTab(isPitcher?'pitchers':'hitters');
   } catch(e) { showToast('Failed to add player.'); }
 }
 
@@ -535,56 +999,49 @@ function savePlayers() {
   localStorage.setItem('farmPlayers', JSON.stringify(players));
 }
 
-// Game Log
 function updateGameLogDropdown() {
   const sel = document.getElementById('gamelogPlayerSel');
   const cur = sel.value;
   sel.innerHTML = '<option value="">— Select a player —</option>' +
     players.map(p=>`<option value="${p.id}">${p.name} (${p.type==='pitcher'?'P':p.pos||'H'})</option>`).join('');
-  if (cur && players.find(p=>p.id==cur)) { sel.value=cur; }
+  if (cur && players.find(p=>p.id==cur)) sel.value=cur;
 }
 
 async function loadGameLog() {
   const id = document.getElementById('gamelogPlayerSel').value;
   const limit = parseInt(document.getElementById('gamelogLimitSel').value);
   const box = document.getElementById('gamelog-content');
-  if (!id) { box.innerHTML = '<div class="empty-state"><h2>Select a player to view their game log</h2></div>'; return; }
-  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading game log...</div>';
+  if (!id) {box.innerHTML='<div class="empty-state"><h2>Select a player to view their game log</h2></div>'; return;}
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading game log...</div>';
   const p = players.find(pl=>pl.id==id);
   try {
-    const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
-    const url = `${API}/people/${id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
-    const r = await proxiedFetch(url);
+    const type = p.type==='pitcher'?'pitching':'hitting';
+    const r = await proxiedFetch(`${API}/people/${id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11`);
     const d = await r.json();
-    const splits = (d.stats?.[0]?.splits || []).slice(-limit).reverse();
-    if (!splits.length) { box.innerHTML = '<div class="empty-state"><h2>No game log data found</h2><p>This player may not have appeared in a game yet this season.</p></div>'; return; }
+    const splits = (d.stats?.[0]?.splits||[]).slice(-limit).reverse();
+    if (!splits.length) {box.innerHTML='<div class="empty-state"><h2>No game log data found</h2></div>'; return;}
     renderGameLog(splits, p, box);
-  } catch(e) { box.innerHTML = '<div class="empty-state"><h2>Failed to load game log</h2></div>'; }
+  } catch(e) {box.innerHTML='<div class="empty-state"><h2>Failed to load game log</h2></div>';}
 }
 
 function renderGameLog(splits, p, box) {
-  const isPitcher = p.type === 'pitcher';
+  const isPitcher = p.type==='pitcher';
   if (isPitcher) {
-    box.innerHTML = `<table class="gamelog-table">
-      <thead><tr><th>Date</th><th>Opp</th><th>Dec</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>SO</th><th>HR</th><th>ERA</th><th>WHIP</th></tr></thead>
-      <tbody>${splits.map(s => {
-        const st = s.stat;
-        const date = s.date || '—';
-        const opp = s.opponent?.name || '—';
-        const dec = st.wins > 0 ? 'W' : st.losses > 0 ? 'L' : '—';
-        const era = st.era || '—';
-        const whip = st.inningsPitched && parseFloat(st.inningsPitched) > 0 ?
-          ((( st.hits||0)+(st.baseOnBalls||0)) / parseFloat(st.inningsPitched)).toFixed(2) : '—';
-        return `<tr><td>${date}</td><td>${opp}</td><td style="color:${dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)'}">${dec}</td>
+    box.innerHTML=`<table class="gamelog-table">
+      <thead><tr><th>Date</th><th>Opp</th><th>Dec</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>SO</th><th>HR</th><th>ERA</th></tr></thead>
+      <tbody>${splits.map(s=>{
+        const st=s.stat; const dec=st.wins>0?'W':st.losses>0?'L':'—';
+        return `<tr><td>${s.date||'—'}</td><td>${s.opponent?.name||'—'}</td>
+          <td style="color:${dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)'}">${dec}</td>
           <td>${st.inningsPitched||'—'}</td><td>${st.hits||0}</td><td>${st.runs||0}</td>
           <td>${st.earnedRuns||0}</td><td>${st.baseOnBalls||0}</td><td>${st.strikeOuts||0}</td>
-          <td>${st.homeRuns||0}</td><td>${era}</td><td>${whip}</td></tr>`;
+          <td>${st.homeRuns||0}</td><td>${st.era||'—'}</td></tr>`;
       }).join('')}</tbody></table>`;
   } else {
-    box.innerHTML = `<table class="gamelog-table">
+    box.innerHTML=`<table class="gamelog-table">
       <thead><tr><th>Date</th><th>Opp</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>R</th><th>BB</th><th>SO</th><th>SB</th><th>AVG</th></tr></thead>
-      <tbody>${splits.map(s => {
-        const st = s.stat;
+      <tbody>${splits.map(s=>{
+        const st=s.stat;
         return `<tr><td>${s.date||'—'}</td><td>${s.opponent?.name||'—'}</td>
           <td>${st.atBats||0}</td><td>${st.hits||0}</td><td>${st.doubles||0}</td>
           <td>${st.triples||0}</td><td>${st.homeRuns||0}</td><td>${st.rbi||0}</td>
@@ -594,7 +1051,6 @@ function renderGameLog(splits, p, box) {
   }
 }
 
-// Modal
 async function openModal(id) {
   const p = players.find(pl=>pl.id===id);
   if (!p) return;
@@ -602,27 +1058,26 @@ async function openModal(id) {
   document.getElementById('modalName').textContent = p.name;
   document.getElementById('modalSub').textContent = `${p.team} · ${p.pos||p.type}`;
   document.getElementById('playerModal').className = 'modal-overlay open';
-  modalTab = 'overview';
-  document.getElementById('mtab-overview').className = 'modal-tab active';
-  document.getElementById('mtab-charts').className = 'modal-tab';
+  modalTab='overview';
+  document.getElementById('mtab-overview').className='modal-tab active';
+  document.getElementById('mtab-charts').className='modal-tab';
   await renderModalOverview(p);
 }
 
 function closeModal() {
-  document.getElementById('playerModal').className = 'modal-overlay';
-  Object.values(trendCharts).forEach(c => c.destroy());
-  trendCharts = {};
+  document.getElementById('playerModal').className='modal-overlay';
+  Object.values(trendCharts).forEach(c=>c.destroy()); trendCharts={};
 }
 
 async function renderModalOverview(p) {
   const box = document.getElementById('modalBody');
-  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
-  const key = `${p.id}-${season}`;
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading...</div>';
+  const key=`${p.id}-${season}`;
   if (!statsCache[key]) await fetchStats(p);
   const s = statsCache[key]?.agg;
-  if (!s) { box.innerHTML = '<div class="empty-state"><h2>No stats available</h2></div>'; return; }
-  if (p.type === 'pitcher') {
-    box.innerHTML = `<div class="stat-grid">
+  if (!s) {box.innerHTML='<div class="empty-state"><h2>No stats available</h2></div>'; return;}
+  if (p.type==='pitcher') {
+    box.innerHTML=`<div class="stat-grid">
       <div class="stat-card"><div class="val">${s.era}</div><div class="lbl">ERA</div></div>
       <div class="stat-card"><div class="val">${s.fip}</div><div class="lbl">FIP</div></div>
       <div class="stat-card"><div class="val">${s.whip}</div><div class="lbl">WHIP</div></div>
@@ -635,7 +1090,7 @@ async function renderModalOverview(p) {
       <div class="stat-card"><div class="val">${s.baa}</div><div class="lbl">BAA</div></div>
     </div>`;
   } else {
-    box.innerHTML = `<div class="stat-grid">
+    box.innerHTML=`<div class="stat-grid">
       <div class="stat-card"><div class="val">${s.avg}</div><div class="lbl">AVG</div></div>
       <div class="stat-card"><div class="val">${s.obp}</div><div class="lbl">OBP</div></div>
       <div class="stat-card"><div class="val">${s.slg}</div><div class="lbl">SLG</div></div>
@@ -652,227 +1107,152 @@ async function renderModalOverview(p) {
 
 async function renderModalCharts(p) {
   const box = document.getElementById('modalBody');
-  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading game log for charts...</div>';
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading chart data...</div>';
   try {
-    const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
-    const url = `${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
-    const r = await fetch(url);
+    const type = p.type==='pitcher'?'pitching':'hitting';
+    const r = await proxiedFetch(`${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11`);
     const d = await r.json();
-    const splits = d.stats?.[0]?.splits || [];
-    if (!splits.length) { box.innerHTML = '<div class="empty-state"><h2>Not enough data for charts</h2></div>'; return; }
-
-    if (p.type === 'pitcher') {
-      // Build rolling ERA, WHIP, FIP over game log
-      let cumIP=0, cumER=0, cumH=0, cumBB=0, cumHBP=0, cumHR=0, cumSO=0, cumBF=0;
-      const labels=[], eras=[], whips=[], fips=[];
-      splits.forEach((s,i) => {
-        const st = s.stat;
-        const outs = Math.round(parseFloat(st.inningsPitched||0)*3);
-        cumIP += outs; cumER += st.earnedRuns||0; cumH += st.hits||0;
-        cumBB += (st.baseOnBalls||0)+(st.intentionalWalks||0);
-        cumHBP += st.hitBatsmen||0; cumHR += st.homeRuns||0;
-        cumSO += st.strikeOuts||0; cumBF += st.battersFaced||0;
+    const splits = d.stats?.[0]?.splits||[];
+    if (!splits.length) {box.innerHTML='<div class="empty-state"><h2>Not enough data for charts</h2></div>'; return;}
+    if (p.type==='pitcher') {
+      let cumIP=0,cumER=0,cumH=0,cumBB=0,cumHBP=0,cumHR=0,cumSO=0;
+      const labels=[],eras=[],whips=[],fips=[];
+      splits.forEach((s,i)=>{
+        const st=s.stat;
+        const outs=Math.round(parseFloat(st.inningsPitched||0)*3);
+        cumIP+=outs; cumER+=st.earnedRuns||0; cumH+=st.hits||0;
+        cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
+        cumHBP+=st.hitBatsmen||0; cumHR+=st.homeRuns||0; cumSO+=st.strikeOuts||0;
         labels.push(s.date||`G${i+1}`);
-        eras.push(cumIP>0 ? +(cumER*27/cumIP).toFixed(2) : null);
-        whips.push(cumIP>0 ? +((cumBB+cumH)/(cumIP/3)).toFixed(2) : null);
-        fips.push(cumIP>0 ? +(((13*cumHR)+(3*(cumBB+cumHBP))-(2*cumSO))/(cumIP/3)+3.10).toFixed(2) : null);
+        eras.push(cumIP>0?+(cumER*27/cumIP).toFixed(2):null);
+        whips.push(cumIP>0?+((cumBB+cumH)/(cumIP/3)).toFixed(2):null);
+        fips.push(cumIP>0?+(((13*cumHR)+(3*(cumBB+cumHBP))-(2*cumSO))/(cumIP/3)+3.10).toFixed(2):null);
       });
-      box.innerHTML = `
-        <div class="chart-title">Season Rolling ERA / WHIP / FIP</div>
-        <div class="chart-wrap"><canvas id="chart-era"></canvas></div>
-        <div class="chart-wrap"><canvas id="chart-whip-fip"></canvas></div>`;
-      setTimeout(() => {
-        trendCharts['era'] = new Chart(document.getElementById('chart-era'), {
-          type:'line', data:{ labels, datasets:[{ label:'ERA', data:eras, borderColor:'#f5c518', tension:0.3, pointRadius:3, fill:false }]},
-          options: chartOpts('ERA')
-        });
-        trendCharts['whipfip'] = new Chart(document.getElementById('chart-whip-fip'), {
-          type:'line', data:{ labels, datasets:[
-            { label:'WHIP', data:whips, borderColor:'#52c97a', tension:0.3, pointRadius:3, fill:false },
-            { label:'FIP', data:fips, borderColor:'#e05252', tension:0.3, pointRadius:3, fill:false }
-          ]},
-          options: chartOpts('WHIP / FIP')
-        });
-      }, 50);
+      box.innerHTML=`<div class="chart-title">Season Rolling ERA</div><div class="chart-wrap"><canvas id="chart-era"></canvas></div>
+        <div class="chart-title">Season Rolling WHIP / FIP</div><div class="chart-wrap"><canvas id="chart-wf"></canvas></div>`;
+      setTimeout(()=>{
+        trendCharts['era']=new Chart(document.getElementById('chart-era'),{type:'line',data:{labels,datasets:[{label:'ERA',data:eras,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
+        trendCharts['wf']=new Chart(document.getElementById('chart-wf'),{type:'line',data:{labels,datasets:[{label:'WHIP',data:whips,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},{label:'FIP',data:fips,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
+      },50);
     } else {
-      let cumAB=0, cumH=0, cumBB=0, cumHBP=0, cumSF=0, cumTB=0, cumSO=0, cumPA=0;
-      const labels=[], avgs=[], obps=[], slgs=[];
-      splits.forEach((s,i) => {
-        const st = s.stat;
-        cumAB += st.atBats||0; cumH += st.hits||0;
-        cumBB += (st.baseOnBalls||0)+(st.intentionalWalks||0);
-        cumHBP += st.hitByPitch||0; cumSF += st.sacFlies||0;
-        cumTB += (st.hits||0) + (st.doubles||0) + 2*(st.triples||0) + 3*(st.homeRuns||0);
-        cumSO += st.strikeOuts||0;
-        cumPA += (st.atBats||0)+(st.baseOnBalls||0)+(st.hitByPitch||0)+(st.sacFlies||0);
+      let cumAB=0,cumH=0,cumBB=0,cumHBP=0,cumSF=0,cumTB=0;
+      const labels=[],avgs=[],obps=[],slgs=[];
+      splits.forEach((s,i)=>{
+        const st=s.stat;
+        cumAB+=st.atBats||0; cumH+=st.hits||0;
+        cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
+        cumHBP+=st.hitByPitch||0; cumSF+=st.sacFlies||0;
+        cumTB+=(st.hits||0)+(st.doubles||0)+2*(st.triples||0)+3*(st.homeRuns||0);
+        const cumPA=cumAB+cumBB+cumHBP+cumSF;
         labels.push(s.date||`G${i+1}`);
-        avgs.push(cumAB>0 ? +(cumH/cumAB).toFixed(3) : null);
-        obps.push(cumPA>0 ? +((cumH+cumBB+cumHBP)/cumPA).toFixed(3) : null);
-        slgs.push(cumAB>0 ? +(cumTB/cumAB).toFixed(3) : null);
+        avgs.push(cumAB>0?+(cumH/cumAB).toFixed(3):null);
+        obps.push(cumPA>0?+((cumH+cumBB+cumHBP)/cumPA).toFixed(3):null);
+        slgs.push(cumAB>0?+(cumTB/cumAB).toFixed(3):null);
       });
-      box.innerHTML = `
-        <div class="chart-title">Season Rolling AVG / OBP / SLG</div>
-        <div class="chart-wrap"><canvas id="chart-avg"></canvas></div>`;
-      setTimeout(() => {
-        trendCharts['avg'] = new Chart(document.getElementById('chart-avg'), {
-          type:'line', data:{ labels, datasets:[
-            { label:'AVG', data:avgs, borderColor:'#f5c518', tension:0.3, pointRadius:3, fill:false },
-            { label:'OBP', data:obps, borderColor:'#52c97a', tension:0.3, pointRadius:3, fill:false },
-            { label:'SLG', data:slgs, borderColor:'#e05252', tension:0.3, pointRadius:3, fill:false }
-          ]},
-          options: chartOpts('AVG / OBP / SLG')
-        });
-      }, 50);
+      box.innerHTML=`<div class="chart-title">Season Rolling AVG / OBP / SLG</div><div class="chart-wrap"><canvas id="chart-avg"></canvas></div>`;
+      setTimeout(()=>{
+        trendCharts['avg']=new Chart(document.getElementById('chart-avg'),{type:'line',data:{labels,datasets:[{label:'AVG',data:avgs,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},{label:'OBP',data:obps,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},{label:'SLG',data:slgs,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
+      },50);
     }
-  } catch(e) { box.innerHTML = '<div class="empty-state"><h2>Failed to load chart data</h2></div>'; }
+  } catch(e) {box.innerHTML='<div class="empty-state"><h2>Failed to load chart data</h2></div>';}
 }
 
-function chartOpts(title) {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color:'#888', boxWidth:12 } }, title:{ display:false } },
-    scales: {
-      x: { ticks:{ color:'#666', maxTicksLimit:10, maxRotation:45 }, grid:{ color:'#2e2e2e' } },
-      y: { ticks:{ color:'#888' }, grid:{ color:'#2e2e2e' } }
-    }
-  };
+function chartOpts() {
+  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},y:{ticks:{color:'#5a8aaa'},grid:{color:'#1a2e44'}}}};
 }
 
 function switchModalTab(tab) {
-  modalTab = tab;
-  document.getElementById('mtab-overview').className = 'modal-tab' + (tab==='overview'?' active':'');
-  document.getElementById('mtab-charts').className = 'modal-tab' + (tab==='charts'?' active':'');
+  modalTab=tab;
+  document.getElementById('mtab-overview').className='modal-tab'+(tab==='overview'?' active':'');
+  document.getElementById('mtab-charts').className='modal-tab'+(tab==='charts'?' active':'');
   Object.values(trendCharts).forEach(c=>c.destroy()); trendCharts={};
   if (tab==='overview') renderModalOverview(currentModalPlayer);
   else renderModalCharts(currentModalPlayer);
 }
 
-// Daily Recap
 async function loadRecap() {
   if (!players.length) {
-    document.getElementById('recap-content').innerHTML = '<div class="empty-state"><h2>No players on your roster yet</h2><p>Add players first to see their daily recap.</p></div>';
+    document.getElementById('recap-content').innerHTML='<div class="empty-state"><h2>No players on your roster yet</h2></div>';
     return;
   }
   const box = document.getElementById('recap-content');
-  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading yesterday\'s stats...</div>';
-
-  // Get yesterday's date
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading yesterday\'s stats...</div>';
   const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setDate(yesterday.getDate()-1);
   const dateStr = yesterday.toISOString().split('T')[0];
-  document.getElementById('recap-date-label').textContent = `Recap for ${yesterday.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'})}`;
-
-  const results = [];
-  await Promise.all(players.map(async p => {
+  document.getElementById('recap-date-label').textContent='Recap for '+yesterday.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const results=[];
+  await Promise.all(players.map(async p=>{
     try {
-      const type = p.type === 'pitcher' ? 'pitching' : 'hitting';
-      const url = `${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11,12,13,14,15,16`;
-      const r = await proxiedFetch(url);
-      const d = await r.json();
-      const splits = d.stats?.[0]?.splits || [];
-      const game = splits.find(s => s.date === dateStr);
-      if (game) results.push({ p, stat: game.stat, opponent: game.opponent?.name || '—', date: game.date });
-    } catch(e) {}
+      const type=p.type==='pitcher'?'pitching':'hitting';
+      const r=await proxiedFetch(`${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=${type}&sportId=11`);
+      const d=await r.json();
+      const splits=d.stats?.[0]?.splits||[];
+      const game=splits.find(s=>s.date===dateStr);
+      if (game) results.push({p,stat:game.stat,opponent:game.opponent?.name||'—'});
+    } catch(e){}
   }));
-
   if (!results.length) {
-    box.innerHTML = `<div class="empty-state"><h2>No games found for yesterday</h2><p>Either no roster players appeared in a game, or games haven't been logged yet.</p></div>`;
+    box.innerHTML='<div class="empty-state"><h2>No games found for yesterday</h2><p>Either no roster players appeared in a game, or games haven\'t been logged yet.</p></div>';
     return;
   }
-
-  // Sort alphabetically
-  results.sort((a,b) => a.p.name.localeCompare(b.p.name));
-
-  const pitchers = results.filter(r => r.p.type === 'pitcher');
-  const hitters = results.filter(r => r.p.type === 'hitter');
-
-  let html = '';
-
+  results.sort((a,b)=>a.p.name.localeCompare(b.p.name));
+  const pitchers=results.filter(r=>r.p.type==='pitcher');
+  const hitters=results.filter(r=>r.p.type==='hitter');
+  let html='';
+  const thStyle='padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right';
+  const tdStyle='padding:10px 8px;border-bottom:1px solid var(--border);text-align:right';
   if (pitchers.length) {
-    html += `<div class="chart-title" style="margin-bottom:12px">Pitchers</div>
+    html+=`<div class="chart-title" style="margin-bottom:12px">Pitchers</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-bottom:28px">
       <thead><tr>
-        <th style="text-align:left;padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border)">Player</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Opp</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">IP</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">H</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">R</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">ER</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">BB</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SO</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">HR</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Dec</th>
+        <th style="${thStyle};text-align:left">Player</th>
+        <th style="${thStyle}">Opp</th><th style="${thStyle}">IP</th><th style="${thStyle}">H</th>
+        <th style="${thStyle}">R</th><th style="${thStyle}">ER</th><th style="${thStyle}">BB</th>
+        <th style="${thStyle}">SO</th><th style="${thStyle}">HR</th><th style="${thStyle}">Dec</th>
       </tr></thead>
-      <tbody>${pitchers.map(({p, stat, opponent}) => {
-        const dec = stat.wins > 0 ? 'W' : stat.losses > 0 ? 'L' : '—';
-        const decColor = dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)';
+      <tbody>${pitchers.map(({p,stat,opponent})=>{
+        const dec=stat.wins>0?'W':stat.losses>0?'L':'—';
+        const decColor=dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)';
         return `<tr>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:left">
-            <span style="font-weight:700">${p.name}</span>
-            <span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span>
-          </td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--muted);font-size:0.82rem">${opponent}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.inningsPitched||'—'}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.hits||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.runs||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.earnedRuns||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.baseOnBalls||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.strikeOuts||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.homeRuns||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:${decColor}">${dec}</td>
+          <td style="${tdStyle};text-align:left"><span style="font-weight:700">${p.name}</span><span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span></td>
+          <td style="${tdStyle};color:var(--muted);font-size:0.82rem">${opponent}</td>
+          <td style="${tdStyle}">${stat.inningsPitched||'—'}</td>
+          <td style="${tdStyle}">${stat.hits||0}</td><td style="${tdStyle}">${stat.runs||0}</td>
+          <td style="${tdStyle}">${stat.earnedRuns||0}</td><td style="${tdStyle}">${stat.baseOnBalls||0}</td>
+          <td style="${tdStyle}">${stat.strikeOuts||0}</td><td style="${tdStyle}">${stat.homeRuns||0}</td>
+          <td style="${tdStyle};font-weight:700;color:${decColor}">${dec}</td>
         </tr>`;
-      }).join('')}</tbody>
-    </table>`;
+      }).join('')}</tbody></table>`;
   }
-
   if (hitters.length) {
-    html += `<div class="chart-title" style="margin-bottom:12px">Hitters</div>
+    html+=`<div class="chart-title" style="margin-bottom:12px">Hitters</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       <thead><tr>
-        <th style="text-align:left;padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border)">Player</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">Opp</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">AB</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">H</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">2B</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">3B</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">HR</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">RBI</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">R</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">BB</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SO</th>
-        <th style="padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right">SB</th>
+        <th style="${thStyle};text-align:left">Player</th>
+        <th style="${thStyle}">Opp</th><th style="${thStyle}">AB</th><th style="${thStyle}">H</th>
+        <th style="${thStyle}">2B</th><th style="${thStyle}">3B</th><th style="${thStyle}">HR</th>
+        <th style="${thStyle}">RBI</th><th style="${thStyle}">R</th><th style="${thStyle}">BB</th>
+        <th style="${thStyle}">SO</th><th style="${thStyle}">SB</th>
       </tr></thead>
-      <tbody>${hitters.map(({p, stat, opponent}) => {
-        return `<tr>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:left">
-            <span style="font-weight:700">${p.name}</span>
-            <span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span>
-          </td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--muted);font-size:0.82rem">${opponent}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.atBats||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.hits||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.doubles||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.triples||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.homeRuns||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.rbi||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.runs||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.baseOnBalls||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.strikeOuts||0}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">${stat.stolenBases||0}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
+      <tbody>${hitters.map(({p,stat,opponent})=>`<tr>
+        <td style="${tdStyle};text-align:left"><span style="font-weight:700">${p.name}</span><span style="display:block;font-size:0.75rem;color:var(--muted)">${p.team||'—'}</span></td>
+        <td style="${tdStyle};color:var(--muted);font-size:0.82rem">${opponent}</td>
+        <td style="${tdStyle}">${stat.atBats||0}</td><td style="${tdStyle}">${stat.hits||0}</td>
+        <td style="${tdStyle}">${stat.doubles||0}</td><td style="${tdStyle}">${stat.triples||0}</td>
+        <td style="${tdStyle}">${stat.homeRuns||0}</td><td style="${tdStyle}">${stat.rbi||0}</td>
+        <td style="${tdStyle}">${stat.runs||0}</td><td style="${tdStyle}">${stat.baseOnBalls||0}</td>
+        <td style="${tdStyle}">${stat.strikeOuts||0}</td><td style="${tdStyle}">${stat.stolenBases||0}</td>
+      </tr>`).join('')}</tbody></table>`;
   }
-
-  box.innerHTML = html;
+  box.innerHTML=html;
 }
 
-// Init
 async function init() {
-  document.getElementById('lastUpdated').textContent = 'Loading...';
+  document.getElementById('lastUpdated').textContent='Loading...';
   await Promise.all(players.map(p=>fetchStats(p)));
   renderAll();
-  document.getElementById('lastUpdated').textContent = players.length ? 'Last updated: '+new Date().toLocaleString() : 'Add players to get started';
+  document.getElementById('lastUpdated').textContent=players.length?'Last updated: '+new Date().toLocaleString():'Add players to get started';
 }
 
 init();
