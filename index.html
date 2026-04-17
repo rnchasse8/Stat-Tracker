@@ -256,17 +256,9 @@
 
 <script>
 const API = 'https://statsapi.mlb.com/api/v1';
-async function proxiedFetch(url) {
-  const proxies = [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://thingproxy.freeboard.io/fetch/${u}`,
-  ];
-  for (const proxy of proxies) {
-    try {
-      const r = await fetch(proxy(url));
-      if (r.ok) return r;
-    } catch(e) {}
+async function proxiedFetch(url) {async function proxiedFetch(url) {
+  return fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+}
   }
   // last resort: direct
   return fetch(url);
