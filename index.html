@@ -90,6 +90,7 @@
       <option value="2025">Season 2025</option>
       <option value="2024">Season 2024</option>
     </select>
+    <button class="btn-ghost" onclick="refreshStatuses()">⟳ Statuses</button>
     <button class="btn-ghost" onclick="refreshAll()">↻ Refresh</button>
   </div>
 </header>
@@ -392,7 +393,7 @@ function renderPitchers() {
     const note = getNotes(p.id);
     return `<tr>
       <td>
-        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
+        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>${statusBadge(p.status)}
         <span class="team-tag">${p.team||'—'} · P</span>
         ${note ? `<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">📝 ${note.length>40?note.substring(0,40)+'…':note}</span>` : ''}
       </td>
@@ -423,7 +424,7 @@ function renderHitters() {
     const note = getNotes(p.id);
     return `<tr>
       <td>
-        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
+        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>${statusBadge(p.status)}
         <span class="team-tag">${p.team||'—'} · ${p.pos||'OF'}</span>
         ${note ? `<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">📝 ${note.length>40?note.substring(0,40)+'…':note}</span>` : ''}
       </td>
@@ -514,13 +515,14 @@ async function addPlayerFromSearch(id) {
   document.getElementById('searchInput').value='';
   if (players.find(p=>p.id===id)) {showToast('Player already on roster'); return;}
   try {
-    const r = await proxiedFetch(`${API}/people/${id}?hydrate=currentTeam`);
+    const r = await proxiedFetch(`${API}/people/${id}?hydrate=currentTeam,rosterEntries`);
     const d = await r.json();
     const p = d.people?.[0];
     if (!p) return;
     const pos = p.primaryPosition?.abbreviation||'OF';
     const isPitcher = pos==='P'||pos==='SP'||pos==='RP';
-    const player = {id:p.id, name:p.fullName, team:p.currentTeam?.name||'—', pos, type:isPitcher?'pitcher':'hitter'};
+    const status = p.status?.description || 'Active';
+    const player = {id:p.id, name:p.fullName, team:p.currentTeam?.name||'—', pos, type:isPitcher?'pitcher':'hitter', status};
     players.push(player);
     savePlayers();
     await fetchStats(player);
@@ -917,6 +919,29 @@ function notesHTML(id) {
     <button onclick="saveNote(${id}, document.getElementById('note-${id}').value)" style="margin-top:8px;background:var(--yellow);color:#050d16;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.85rem">Save Note</button>
     ${note ? `<button onclick="saveNote(${id}, ''); document.getElementById('note-${id}').value=''" style="margin-top:8px;margin-left:8px;background:transparent;color:var(--red);border:1px solid var(--red);padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.85rem">Clear</button>` : ''}
   </div>`;
+}
+
+function statusBadge(status) {
+  if (!status || status === 'Active') return '';
+  const color = status.includes('IL') || status.includes('Injured') ? 'var(--red)' :
+                status.includes('Day-to-Day') ? '#f5a623' : 'var(--muted)';
+  return `<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid ${color};color:${color};margin-left:5px;vertical-align:middle">${status}</span>`;
+}
+
+async function refreshStatuses() {
+  await Promise.all(players.map(async p => {
+    try {
+      const r = await proxiedFetch(`${API}/people/${p.id}?hydrate=currentTeam,rosterEntries`);
+      const d = await r.json();
+      const person = d.people?.[0];
+      if (person) {
+        p.status = person.status?.description || 'Active';
+        p.team = person.currentTeam?.name || p.team;
+      }
+    } catch(e) {}
+  }));
+  savePlayers();
+  renderAll();
 }
 
 function getNotes(id) {
