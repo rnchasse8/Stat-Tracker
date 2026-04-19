@@ -165,6 +165,8 @@
           <th onclick="sortTable('pitchers','whip')">WHIP</th>
           <th onclick="sortTable('pitchers','baa')">BAA</th>
           <th onclick="sortTable('pitchers','hr')">HR</th>
+          <th onclick="sortTable('pitchers','totalPitches')">P</th>
+          <th onclick="sortTable('pitchers','pitchesPerGame')">P/G</th>
           <th></th>
         </tr>
       </thead>
@@ -310,7 +312,7 @@ async function fetchStats(p) {
 
 function aggregateSplits(splits, type) {
   if (type === 'pitcher') {
-    let w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0;
+    let w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0,totalPitches=0;
     splits.forEach(s => {
       const st = s.stat;
       w+=st.wins||0; l+=st.losses||0; g+=st.gamesPitched||0; gs+=st.gamesStarted||0;
@@ -318,6 +320,7 @@ function aggregateSplits(splits, type) {
       h+=st.hits||0; r+=st.runs||0; er+=st.earnedRuns||0; hr+=st.homeRuns||0;
       bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
       so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; bf+=st.battersFaced||0;
+      totalPitches+=st.numberOfPitches||0;
     });
     const ipReal = Math.floor(ip/3)+(ip%3)/10;
     const era = ip>0?(er*27/ip).toFixed(2):'—';
@@ -327,7 +330,8 @@ function aggregateSplits(splits, type) {
     const fip = ip>0?(((13*hr)+(3*(bb+hbp))-(2*so))/(ip/3)+3.10).toFixed(2):'—';
     const kPct = bf>0?(so/bf*100).toFixed(1)+'%':'—';
     const bbPct = bf>0?(bb/bf*100).toFixed(1)+'%':'—';
-    return {w,l,g,gs,ip:ipReal,h,r,er,hr,bb,so,hbp,bf,era,whip,baa,fip,kPct,bbPct};
+    const pitchesPerGame = g>0 ? (totalPitches/g).toFixed(1) : '—';
+    return {w,l,g,gs,ip:ipReal,h,r,er,hr,bb,so,hbp,bf,era,whip,baa,fip,kPct,bbPct,totalPitches,pitchesPerGame};
   } else {
     let g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
     splits.forEach(s => {
@@ -378,7 +382,9 @@ function renderPitchers() {
       <td>${fmt(s.era)}</td><td>${fmt(s.fip)}</td><td>${fmt(s.ip)}</td>
       <td>${fmt(s.so)}</td><td>${fmt(s.bb)}</td>
       <td>${fmt(s.kPct)}</td><td>${fmt(s.bbPct)}</td>
-      <td>${fmt(s.whip)}</td><td>${fmt(s.baa)}</td><td>${fmt(s.hr)}</td>
+      <td>${fmt(s.whip)}</td><td>${fmt(s.baa)}</td>      <td>${fmt(s.hr)}</td>
+      <td>${fmt(s.totalPitches)}</td>
+      <td>${fmt(s.pitchesPerGame)}</td>
       <td><button class="remove-btn" onclick="removePlayer(${p.id})">✕</button></td>
     </tr>`;
   }).join('');
@@ -540,14 +546,14 @@ function renderGameLog(splits, p, box) {
   const isPitcher = p.type==='pitcher';
   if (isPitcher) {
     box.innerHTML=`<table class="gamelog-table">
-      <thead><tr><th>Date</th><th>Opp</th><th>Dec</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>SO</th><th>HR</th><th>ERA</th></tr></thead>
+      <thead><tr><th>Date</th><th>Opp</th><th>Dec</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>SO</th><th>HR</th><th>ERA</th><th>P</th></tr></thead>
       <tbody>${splits.map(s=>{
         const st=s.stat; const dec=st.wins>0?'W':st.losses>0?'L':'—';
         return `<tr><td>${s.date||'—'}</td><td>${s.opponent?.name||'—'}</td>
           <td style="color:${dec==='W'?'var(--green)':dec==='L'?'var(--red)':'var(--muted)'}">${dec}</td>
           <td>${st.inningsPitched||'—'}</td><td>${st.hits||0}</td><td>${st.runs||0}</td>
           <td>${st.earnedRuns||0}</td><td>${st.baseOnBalls||0}</td><td>${st.strikeOuts||0}</td>
-          <td>${st.homeRuns||0}</td><td>${st.era||'—'}</td></tr>`;
+          <td>${st.homeRuns||0}</td><td>${st.era||'—'}</td><td>${st.numberOfPitches||'—'}</td></tr>`;
       }).join('')}</tbody></table>`;
   } else {
     box.innerHTML=`<table class="gamelog-table">
@@ -600,6 +606,8 @@ async function renderModalOverview(p) {
       <div class="stat-card"><div class="val">${s.w}-${s.l}</div><div class="lbl">W-L</div></div>
       <div class="stat-card"><div class="val">${s.g}</div><div class="lbl">G</div></div>
       <div class="stat-card"><div class="val">${s.baa}</div><div class="lbl">BAA</div></div>
+      <div class="stat-card"><div class="val">${s.totalPitches}</div><div class="lbl">Pitches</div></div>
+      <div class="stat-card"><div class="val">${s.pitchesPerGame}</div><div class="lbl">P/G</div></div>
     </div>`;
   } else {
     box.innerHTML=`<div class="stat-grid">
@@ -731,7 +739,7 @@ async function loadRecap() {
         <th style="${thStyle};text-align:left">Player</th>
         <th style="${thStyle}">Opp</th><th style="${thStyle}">IP</th><th style="${thStyle}">H</th>
         <th style="${thStyle}">R</th><th style="${thStyle}">ER</th><th style="${thStyle}">BB</th>
-        <th style="${thStyle}">SO</th><th style="${thStyle}">HR</th><th style="${thStyle}">Dec</th>
+        <th style="${thStyle}">SO</th><th style="${thStyle}">HR</th><th style="${thStyle}">P</th><th style="${thStyle}">Dec</th>
       </tr></thead>
       <tbody>${pitchers.map(({p,stat,opponent})=>{
         const dec=stat.wins>0?'W':stat.losses>0?'L':'—';
@@ -743,6 +751,7 @@ async function loadRecap() {
           <td style="${tdStyle}">${stat.hits||0}</td><td style="${tdStyle}">${stat.runs||0}</td>
           <td style="${tdStyle}">${stat.earnedRuns||0}</td><td style="${tdStyle}">${stat.baseOnBalls||0}</td>
           <td style="${tdStyle}">${stat.strikeOuts||0}</td><td style="${tdStyle}">${stat.homeRuns||0}</td>
+          <td style="${tdStyle};font-weight:700;color:var(--yellow)">${stat.numberOfPitches||'—'}</td>
           <td style="${tdStyle};font-weight:700;color:${decColor}">${dec}</td>
         </tr>`;
       }).join('')}</tbody></table>`;
