@@ -337,6 +337,47 @@ function renderAll() {
   renderPitchers(); renderHitters(); updateGameLogDropdown(); updateCounts();
 }
 
+function trendArrow(current, last5) {
+  if (!current || !last5) return '';
+  const diff = parseFloat(last5) - parseFloat(current);
+  if (Math.abs(diff) < 0.05) return '';
+  // For ERA/WHIP/FIP lower is better, for AVG/OBP higher is better
+  return '';
+}
+
+function pitcherTrend(splits) {
+  if (!splits || splits.length < 3) return { era: null, whip: null };
+  const last5 = splits.slice(-5);
+  let ip=0, er=0, h=0, bb=0;
+  last5.forEach(s => {
+    const st = s.stat;
+    ip += Math.round(parseFloat(st.inningsPitched||0)*3);
+    er += st.earnedRuns||0; h += st.hits||0;
+    bb += (st.baseOnBalls||0)+(st.intentionalWalks||0);
+  });
+  const era = ip>0 ? (er*27/ip).toFixed(2) : null;
+  const whip = ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : null;
+  return { era, whip };
+}
+
+function hitterTrend(splits) {
+  if (!splits || splits.length < 3) return { avg: null };
+  const last5 = splits.slice(-5);
+  let ab=0, h=0;
+  last5.forEach(s => { ab += s.stat.atBats||0; h += s.stat.hits||0; });
+  return { avg: ab>0 ? (h/ab).toFixed(3) : null };
+}
+
+function trendIndicator(current, last5, lowerIsBetter=false) {
+  if (!current || !last5 || current==='—' || last5==='—') return '';
+  const diff = parseFloat(last5) - parseFloat(current);
+  if (Math.abs(diff) < 0.02) return '<span style="color:var(--muted);font-size:0.75rem;margin-left:4px">→</span>';
+  const better = lowerIsBetter ? diff < 0 : diff > 0;
+  return better
+    ? '<span style="color:var(--green);font-size:0.75rem;margin-left:4px">▲</span>'
+    : '<span style="color:var(--red);font-size:0.75rem;margin-left:4px">▼</span>';
+}
+
 function renderPitchers() {
   const pitchers = players.filter(p=>p.type==='pitcher');
   document.getElementById('pitcher-empty').style.display = pitchers.length===0?'block':'none';
@@ -345,14 +386,23 @@ function renderPitchers() {
   document.getElementById('pitcher-body').innerHTML = sorted.map(p => {
     const key = `${p.id}-${season}`;
     const s = statsCache[key]?.agg;
-    if (!s) return `<tr><td colspan="18"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>`;
+    const splits = statsCache[key]?.splits || [];
+    if (!s) return `<tr><td colspan="19"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>`;
+    const trend = pitcherTrend(splits);
+    const note = getNotes(p.id);
     return `<tr>
-      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span><span class="team-tag">${p.team||'—'} · P</span></td>
+      <td>
+        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
+        <span class="team-tag">${p.team||'—'} · P</span>
+        ${note ? `<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">📝 ${note.length>40?note.substring(0,40)+'…':note}</span>` : ''}
+      </td>
       <td>${fmt(s.w)}</td><td>${fmt(s.l)}</td><td>${fmt(s.g)}</td><td>${fmt(s.gs)}</td>
-      <td>${fmt(s.era)}</td><td>${fmt(s.fip)}</td><td>${fmt(s.ip)}</td>
+      <td>${fmt(s.era)}${trendIndicator(s.era, trend.era, true)}</td>
+      <td>${fmt(s.fip)}</td><td>${fmt(s.ip)}</td>
       <td>${fmt(s.so)}</td><td>${fmt(s.bb)}</td>
       <td>${fmt(s.kPct)}</td><td>${fmt(s.bbPct)}</td>
-      <td>${fmt(s.whip)}</td><td>${fmt(s.baa)}</td><td>${fmt(s.hr)}</td>
+      <td>${fmt(s.whip)}${trendIndicator(s.whip, trend.whip, true)}</td>
+      <td>${fmt(s.baa)}</td><td>${fmt(s.hr)}</td>
       <td>${fmt(s.totalPitches)}</td><td>${fmt(s.pitchesPerGame)}</td>
       <td><button class="remove-btn" onclick="removePlayer(${p.id})">✕</button></td>
     </tr>`;
@@ -367,11 +417,19 @@ function renderHitters() {
   document.getElementById('hitter-body').innerHTML = sorted.map(p => {
     const key = `${p.id}-${season}`;
     const s = statsCache[key]?.agg;
+    const splits = statsCache[key]?.splits || [];
     if (!s) return `<tr><td colspan="15"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>`;
+    const trend = hitterTrend(splits);
+    const note = getNotes(p.id);
     return `<tr>
-      <td><span class="player-name" onclick="openModal(${p.id})">${p.name}</span><span class="team-tag">${p.team||'—'} · ${p.pos||'OF'}</span></td>
+      <td>
+        <span class="player-name" onclick="openModal(${p.id})">${p.name}</span>
+        <span class="team-tag">${p.team||'—'} · ${p.pos||'OF'}</span>
+        ${note ? `<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">📝 ${note.length>40?note.substring(0,40)+'…':note}</span>` : ''}
+      </td>
       <td>${fmt(s.g)}</td><td>${fmt(s.ab)}</td>
-      <td>${fmt(s.avg)}</td><td>${fmt(s.obp)}</td><td>${fmt(s.slg)}</td><td>${fmt(s.ops)}</td>
+      <td>${fmt(s.avg)}${trendIndicator(s.avg, trend.avg, false)}</td>
+      <td>${fmt(s.obp)}</td><td>${fmt(s.slg)}</td><td>${fmt(s.ops)}</td>
       <td>${fmt(s.hr)}</td><td>${fmt(s.rbi)}</td><td>${fmt(s.r)}</td>
       <td>${fmt(s.kPct)}</td><td>${fmt(s.bbPct)}</td>
       <td>${fmt(s.sb)}</td><td>${fmt(s.cs)}</td>
@@ -616,7 +674,8 @@ async function renderModalOverview(p) {
       <div class="stat-card"><div class="val">${s.baa}</div><div class="lbl">BAA</div></div>
       <div class="stat-card"><div class="val">${s.totalPitches}</div><div class="lbl">Pitches</div></div>
       <div class="stat-card"><div class="val">${s.pitchesPerGame}</div><div class="lbl">P/G</div></div>
-    </div>`;
+    </div>
+    ${notesHTML(p.id)}`;
   } else {
     box.innerHTML=`<div class="stat-grid">
       <div class="stat-card"><div class="val">${s.avg}</div><div class="lbl">AVG</div></div>
@@ -629,7 +688,8 @@ async function renderModalOverview(p) {
       <div class="stat-card"><div class="val">${s.kPct}</div><div class="lbl">K%</div></div>
       <div class="stat-card"><div class="val">${s.bbPct}</div><div class="lbl">BB%</div></div>
       <div class="stat-card"><div class="val">${s.sb}/${s.cs}</div><div class="lbl">SB/CS</div></div>
-    </div>`;
+    </div>
+    ${notesHTML(p.id)}`;
   }
 }
 
@@ -847,6 +907,26 @@ async function loadWorkload() {
       </table>
     </div>${i<results.length-1?'<hr style="border:none;border-top:1px solid var(--border);margin:0 0 28px">':''}`;
   }).join('');
+}
+
+function notesHTML(id) {
+  const note = getNotes(id);
+  return `<div style="margin-top:8px">
+    <div class="chart-title" style="margin-bottom:8px">Scouting Notes</div>
+    <textarea id="note-${id}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:10px;font-size:0.9rem;font-family:'Segoe UI',sans-serif;resize:vertical;min-height:80px;outline:none" placeholder="Add scouting notes, injury status, things to watch...">${note}</textarea>
+    <button onclick="saveNote(${id}, document.getElementById('note-${id}').value)" style="margin-top:8px;background:var(--yellow);color:#050d16;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.85rem">Save Note</button>
+    ${note ? `<button onclick="saveNote(${id}, ''); document.getElementById('note-${id}').value=''" style="margin-top:8px;margin-left:8px;background:transparent;color:var(--red);border:1px solid var(--red);padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.85rem">Clear</button>` : ''}
+  </div>`;
+}
+
+function getNotes(id) {
+  return localStorage.getItem(`note-${id}`) || '';
+}
+
+function saveNote(id, text) {
+  if (text.trim()) localStorage.setItem(`note-${id}`, text.trim());
+  else localStorage.removeItem(`note-${id}`);
+  renderAll();
 }
 
 async function init() {
