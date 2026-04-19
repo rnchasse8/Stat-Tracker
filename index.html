@@ -135,6 +135,7 @@
   <div class="tab" id="tab-hitters" onclick="switchTab('hitters')">Hitters <span class="cnt" id="hitter-cnt">0</span></div>
   <div class="tab" id="tab-gamelog" onclick="switchTab('gamelog')">Game Log</div>
   <div class="tab" id="tab-recap" onclick="switchTab('recap')">Daily Recap</div>
+  <div class="tab" id="tab-workload" onclick="switchTab('workload')">Workload</div>
 </div>
 
 <div class="content">
@@ -223,7 +224,15 @@
     </div>
   </div>
 
-  <div id="view-recap" style="display:none">
+  <div id="view-workload" style="display:none">
+    <div class="meta-bar" style="margin-bottom:20px">
+      <span>Last 10 outings per pitcher</span>
+      <button class="btn-ghost" onclick="loadWorkload()">↻ Refresh</button>
+    </div>
+    <div id="workload-content">
+      <div class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+  </div>
     <div class="meta-bar" style="margin-bottom:20px">
       <span id="recap-date-label">Loading yesterday's games...</span>
       <button class="btn-ghost" onclick="loadRecap()">↻ Refresh</button>
@@ -434,12 +443,13 @@ function updateCounts() {
 
 function switchTab(tab) {
   currentTab = tab;
-  ['pitchers','hitters','gamelog','recap'].forEach(t => {
+  ['pitchers','hitters','gamelog','recap','workload'].forEach(t => {
     document.getElementById(`tab-${t}`).className = 'tab'+(t===tab?' active':'');
     document.getElementById(`view-${t}`).style.display = t===tab?'block':'none';
   });
   if (tab==='gamelog') updateGameLogDropdown();
   if (tab==='recap') loadRecap();
+  if (tab==='workload') loadWorkload();
 }
 
 let searchResults = [];
@@ -777,6 +787,90 @@ async function loadRecap() {
       </tr>`).join('')}</tbody></table>`;
   }
   box.innerHTML=html;
+}
+
+async function loadWorkload() {
+  const pitchers = players.filter(p => p.type === 'pitcher');
+  const box = document.getElementById('workload-content');
+  if (!pitchers.length) {
+    box.innerHTML = '<div class="empty-state"><h2>No pitchers on your roster yet</h2><p>Add pitchers to track their workload.</p></div>';
+    return;
+  }
+  box.innerHTML = '<div class="loading"><span class="spinner"></span>Loading workload data...</div>';
+  const sportIds = [11,12,13,14,15,16];
+  const results = [];
+  await Promise.all(pitchers.map(async p => {
+    let splits = [];
+    for (const sportId of sportIds) {
+      try {
+        const r = await proxiedFetch(`${API}/people/${p.id}/stats?stats=gameLog&season=${season}&group=pitching&sportId=${sportId}`);
+        const d = await r.json();
+        const s = d.stats?.[0]?.splits || [];
+        if (s.length > 0) { splits = s; break; }
+      } catch(e) {}
+    }
+    results.push({ p, splits: splits.slice(-10).reverse() });
+  }));
+  results.sort((a,b) => a.p.name.localeCompare(b.p.name));
+
+  const thS = 'padding:8px 10px;background:var(--bg3);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap';
+  const tdS = 'padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:0.85rem';
+
+  box.innerHTML = results.map(({p, splits}) => {
+    if (!splits.length) return `<div style="margin-bottom:28px">
+      <div style="font-weight:800;font-size:1rem;margin-bottom:4px">${p.name}</div>
+      <div style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">${p.team||'—'}</div>
+      <div style="color:var(--muted);font-size:0.85rem">No outings found this season.</div>
+    </div>`;
+
+    const totalPitches = splits.reduce((sum,s) => sum+(s.stat.numberOfPitches||0), 0);
+    const avgPitches = splits.length ? (totalPitches/splits.length).toFixed(1) : '—';
+    const maxPitches = Math.max(...splits.map(s=>s.stat.numberOfPitches||0));
+
+    return `<div style="margin-bottom:36px">
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
+        <span style="font-weight:800;font-size:1rem">${p.name}</span>
+        <span style="color:var(--muted);font-size:0.85rem">${p.team||'—'}</span>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:0.82rem;color:var(--muted)">Last ${splits.length} outings &nbsp;·&nbsp; <span style="color:var(--text)">Total: <strong style="color:var(--yellow)">${totalPitches}</strong></span> &nbsp;·&nbsp; <span style="color:var(--text)">Avg: <strong style="color:var(--yellow)">${avgPitches}</strong></span> &nbsp;·&nbsp; <span style="color:var(--text)">High: <strong style="color:${maxPitches>=100?'var(--red)':maxPitches>=85?'#f5a623':'var(--green)'}">${maxPitches}</strong></span></span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="${thS};text-align:left">Date</th>
+          <th style="${thS}">Opponent</th>
+          <th style="${thS}">IP</th>
+          <th style="${thS}">H</th>
+          <th style="${thS}">R</th>
+          <th style="${thS}">ER</th>
+          <th style="${thS}">BB</th>
+          <th style="${thS}">SO</th>
+          <th style="${thS}">Pitches</th>
+        </tr></thead>
+        <tbody>${splits.map(s => {
+          const st = s.stat;
+          const pitches = st.numberOfPitches || 0;
+          const pitchColor = pitches>=100?'var(--red)':pitches>=85?'#f5a623':'var(--text)';
+          return `<tr>
+            <td style="${tdS};text-align:left">${s.date||'—'}</td>
+            <td style="${tdS};color:var(--muted)">${s.opponent?.name||'—'}</td>
+            <td style="${tdS}">${st.inningsPitched||'—'}</td>
+            <td style="${tdS}">${st.hits||0}</td>
+            <td style="${tdS}">${st.runs||0}</td>
+            <td style="${tdS}">${st.earnedRuns||0}</td>
+            <td style="${tdS}">${st.baseOnBalls||0}</td>
+            <td style="${tdS}">${st.strikeOuts||0}</td>
+            <td style="${tdS};font-weight:700;color:${pitchColor}">${pitches||'—'}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="background:var(--bg3)">
+          <td style="${tdS};text-align:left;color:var(--muted);font-size:0.78rem;letter-spacing:1px;text-transform:uppercase" colspan="8">Totals / Avg</td>
+          <td style="${tdS};font-weight:800;color:var(--yellow)">${totalPitches} <span style="font-weight:400;color:var(--muted);font-size:0.78rem">(${avgPitches}/g)</span></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin-bottom:28px">');
 }
 
 async function init() {
