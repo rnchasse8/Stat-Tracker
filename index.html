@@ -229,7 +229,7 @@
 
 <script>
 const API = 'https://statsapi.mlb.com/api/v1';
-const SPORT_IDS = [11,12,13,14,15,16];
+const SPORT_IDS = [1,11,12,13,14,15,16];
 function proxiedFetch(url) { return fetch(url); }
 
 async function fetchWithSportIdFallback(buildUrl) {
@@ -483,7 +483,7 @@ async function doSearch(inline=false) {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
   try {
-    const r = await proxiedFetch(`${API}/people/search?names=${encodeURIComponent(q)}&sportIds=11,12,13,14,15,16&active=true`);
+    const r = await proxiedFetch(`${API}/people/search?names=${encodeURIComponent(q)}&sportIds=1,11,12,13,14,15,16&active=true`);
     const d = await r.json();
     searchResults = d.people || [];
     if (inline) showInlineResults(searchResults);
