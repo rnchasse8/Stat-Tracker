@@ -103,6 +103,14 @@
   <button class="btn" onclick="doSearch()">Search</button>
 </div>
 
+<div class="search-bar">
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Search by player name..." onkeydown="if(event.key==='Enter')doSearch()" oninput="doSearch(true)">
+    <div class="search-results" id="searchResults" style="display:none"></div>
+  </div>
+  <button class="btn" onclick="doSearch()">Search</button>
+</div>
+
 <div class="tabs-bar">
   <div class="tab active" id="tab-pitchers" onclick="switchTab('pitchers')">Pitchers <span class="cnt" id="pitcher-cnt">0</span></div>
   <div class="tab" id="tab-hitters" onclick="switchTab('hitters')">Hitters <span class="cnt" id="hitter-cnt">0</span></div>
