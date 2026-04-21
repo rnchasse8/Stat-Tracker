@@ -480,7 +480,6 @@ function switchTab(tab) {
   if (tab==='workload') loadWorkload();
 }
 
-var searchTimeout;
 async function onSearchInput() {
   var q = document.getElementById('searchInput').value.trim();
   clearTimeout(searchTimeout);
