@@ -521,7 +521,7 @@ async function addPlayerFromSearch(id) {
     if (!p) return;
     const pos = p.primaryPosition?.abbreviation||'OF';
     const isPitcher = pos==='P'||pos==='SP'||pos==='RP';
-    const status = p.status?.description || 'Active';
+    const status = extractStatus(p);
     const player = {id:p.id, name:p.fullName, team:p.currentTeam?.name||'—', pos, type:isPitcher?'pitcher':'hitter', status};
     players.push(player);
     savePlayers();
@@ -921,7 +921,12 @@ function notesHTML(id) {
   </div>`;
 }
 
-function statusBadge(status) {
+function extractStatus(person) {
+  const entries = person.rosterEntries || [];
+  const active = entries.find(e => e.isActive);
+  if (active) return active.status?.description || 'Active';
+  return 'Active';
+}
   if (!status || status === 'Active') return '';
   const color = status.includes('IL') || status.includes('Injured') ? 'var(--red)' :
                 status.includes('Day-to-Day') ? '#f5a623' : 'var(--muted)';
@@ -935,7 +940,7 @@ async function refreshStatuses() {
       const d = await r.json();
       const person = d.people?.[0];
       if (person) {
-        p.status = person.status?.description || 'Active';
+        p.status = extractStatus(person);
         p.team = person.currentTeam?.name || p.team;
       }
     } catch(e) {}
