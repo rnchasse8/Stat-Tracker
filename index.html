@@ -103,14 +103,6 @@
   <button class="btn" onclick="doSearch()">Search</button>
 </div>
 
-<div class="search-bar">
-  <div class="search-wrap">
-    <input type="text" id="searchInput" placeholder="Search by player name..." onkeydown="if(event.key==='Enter')doSearch()" oninput="doSearch(true)">
-    <div class="search-results" id="searchResults" style="display:none"></div>
-  </div>
-  <button class="btn" onclick="doSearch()">Search</button>
-</div>
-
 <div class="tabs-bar">
   <div class="tab active" id="tab-pitchers" onclick="switchTab('pitchers')">Pitchers <span class="cnt" id="pitcher-cnt">0</span></div>
   <div class="tab" id="tab-hitters" onclick="switchTab('hitters')">Hitters <span class="cnt" id="hitter-cnt">0</span></div>
@@ -143,7 +135,7 @@
         <th onclick="sortTable('pitchers','whip')">WHIP</th>
         <th onclick="sortTable('pitchers','baa')">BAA</th>
         <th onclick="sortTable('pitchers','hr')">HR</th>
-        <th onclick="sortTable('pitchers','totalPitches')">P</th>
+        <th onclick="sortTable('pitchers','strikePct')">STR%</th>
         <th onclick="sortTable('pitchers','pitchesPerGame')">P/G</th>
         <th></th>
       </tr></thead>
@@ -308,7 +300,10 @@ function aggregateSplits(splits, type) {
     var kPct = bf>0 ? (so/bf*100).toFixed(1)+'%' : '—';
     var bbPct = bf>0 ? (bb/bf*100).toFixed(1)+'%' : '—';
     var pitchesPerGame = g>0 ? (totalPitches/g).toFixed(1) : '—';
-    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame};
+    var totalStrikes = 0;
+    splits.forEach(function(s) { totalStrikes += s.stat.strikes||0; });
+    var strikePct = totalPitches>0 ? (totalStrikes/totalPitches*100).toFixed(1)+'%' : '—';
+    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct};
   } else {
     var g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
     splits.forEach(function(s) {
@@ -427,7 +422,7 @@ function renderPitchers() {
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
       '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.hr) + '</td>' +
-      '<td>' + fmt(s.totalPitches) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
+      '<td>' + fmt(s.strikePct) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
       '<td><button class="remove-btn" onclick="removePlayer(' + p.id + ')">✕</button></td></tr>';
   }).join('');
 }
