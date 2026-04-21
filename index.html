@@ -97,7 +97,7 @@
 
 <div class="search-bar">
   <div class="search-wrap">
-    <input type="text" id="searchInput" placeholder="Search by player name..." onkeydown="if(event.key==='Enter')doSearch()" oninput="doSearch(true)"
+    <input type="text" id="searchInput" placeholder="Search by player name..." onkeydown="if(event.key==='Enter')doSearch()" oninput="onSearchInput()">
     <div class="search-results" id="searchResults" style="display:none"></div>
   </div>
   <button class="btn" onclick="doSearch()">Search</button>
@@ -478,13 +478,6 @@ function switchTab(tab) {
   if (tab==='gamelog') updateGameLogDropdown();
   if (tab==='recap') loadRecap();
   if (tab==='workload') loadWorkload();
-}
-
-async function onSearchInput() {
-  var q = document.getElementById('searchInput').value.trim();
-  clearTimeout(searchTimeout);
-  if (q.length < 2) { document.getElementById('searchResults').style.display='none'; return; }
-  searchTimeout = setTimeout(function() { doSearch(true); }, 400);
 }
 
 async function doSearch(inline) {
