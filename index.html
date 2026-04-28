@@ -136,7 +136,6 @@
         <th onclick="sortTable('pitchers','baa')">BAA</th>
         <th onclick="sortTable('pitchers','hr')">HR</th>
         <th onclick="sortTable('pitchers','strikePct')">STR%</th>
-        <th onclick="sortTable('pitchers','cswPct')">CSW%</th>
         <th onclick="sortTable('pitchers','pitchesPerGame')">P/G</th>
         <th></th>
       </tr></thead>
@@ -430,7 +429,7 @@ function renderPitchers() {
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
       '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.hr) + '</td>' +
-      '<td>' + fmt(s.strikePct) + '</td><td>' + fmt(s.cswPct) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
+      '<td>' + fmt(s.strikePct) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
       '<td><button class="remove-btn" onclick="removePlayer(' + p.id + ')">✕</button></td></tr>';
   }).join('');
 }
@@ -694,7 +693,6 @@ async function renderModalOverview(p) {
       '<div class="stat-card"><div class="val">' + s.baa + '</div><div class="lbl">BAA</div></div>' +
       '<div class="stat-card"><div class="val">' + s.totalPitches + '</div><div class="lbl">Pitches</div></div>' +
       '<div class="stat-card"><div class="val">' + s.strikePct + '</div><div class="lbl">STR%</div></div>' +
-      '<div class="stat-card"><div class="val">' + s.cswPct + '</div><div class="lbl">CSW%</div></div>' +
       '<div class="stat-card"><div class="val">' + s.pitchesPerGame + '</div><div class="lbl">P/G</div></div>' +
       '</div>' + notesHTML(p.id);
   } else {
