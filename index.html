@@ -134,6 +134,8 @@
         <th onclick="sortTable('pitchers','bbPct')">BB%</th>
         <th onclick="sortTable('pitchers','whip')">WHIP</th>
         <th onclick="sortTable('pitchers','baa')">BAA</th>
+        <th onclick="sortTable('pitchers','h')">H</th>
+        <th onclick="sortTable('pitchers','slgAgainst')">SLG</th>
         <th onclick="sortTable('pitchers','hr')">HR</th>
         <th onclick="sortTable('pitchers','strikePct')">STR%</th>
         <th onclick="sortTable('pitchers','pitchesPerGame')">P/G</th>
@@ -296,6 +298,9 @@ function aggregateSplits(splits, type) {
     var whip = ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : '—';
     var ab = bf-bb-hbp;
     var baa = ab>0 ? (h/ab).toFixed(3) : '—';
+    var totalBases = 0;
+    splits.forEach(function(s) { totalBases += s.stat.totalBases||0; });
+    var slgAgainst = ab>0 ? (totalBases/ab).toFixed(3) : '—';
     var fip = ip>0 ? (((13*hr)+(3*(bb+hbp))-(2*so))/(ip/3)+3.10).toFixed(2) : '—';
     var kPct = bf>0 ? (so/bf*100).toFixed(1)+'%' : '—';
     var bbPct = bf>0 ? (bb/bf*100).toFixed(1)+'%' : '—';
@@ -310,7 +315,7 @@ function aggregateSplits(splits, type) {
     });
     var strikePct = totalPitches>0 ? (totalStrikes/totalPitches*100).toFixed(1)+'%' : '—';
     var cswPct = totalPitches>0 ? ((totalCalledStrikes+totalSwingingStrikes)/totalPitches*100).toFixed(1)+'%' : '—';
-    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct,cswPct:cswPct};
+    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct,cswPct:cswPct};
   } else {
     var g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
     splits.forEach(function(s) {
@@ -428,7 +433,7 @@ function renderPitchers() {
       '<td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
-      '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.hr) + '</td>' +
+      '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.h) + '</td><td>' + fmt(s.slgAgainst) + '</td><td>' + fmt(s.hr) + '</td>' +
       '<td>' + fmt(s.strikePct) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
       '<td><button class="remove-btn" onclick="removePlayer(' + p.id + ')">✕</button></td></tr>';
   }).join('');
