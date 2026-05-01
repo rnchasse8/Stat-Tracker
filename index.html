@@ -128,6 +128,7 @@
         <th onclick="sortTable('pitchers','era')">ERA</th>
         <th onclick="sortTable('pitchers','fip')">FIP</th>
         <th onclick="sortTable('pitchers','ip')">IP</th>
+        <th onclick="sortTable('pitchers','h')">H</th>
         <th onclick="sortTable('pitchers','so')">SO</th>
         <th onclick="sortTable('pitchers','bb')">BB</th>
         <th onclick="sortTable('pitchers','kPct')">K%</th>
@@ -433,7 +434,7 @@ function renderPitchers() {
       '<td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
-      '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.h) + '</td><td>' + fmt(s.slgAgainst) + '</td><td>' + fmt(s.hr) + '</td>' +
+      '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.slgAgainst) + '</td><td>' + fmt(s.hr) + '</td>' +
       '<td>' + fmt(s.strikePct) + '</td><td>' + fmt(s.pitchesPerGame) + '</td>' +
       '<td><button class="remove-btn" onclick="removePlayer(' + p.id + ')">✕</button></td></tr>';
   }).join('');
