@@ -294,8 +294,13 @@ function aggregateSplits(splits, type) {
       totalPitches+=st.numberOfPitches||0;
     });
     var ipReal = Math.floor(ip/3)+(ip%3)/10;
-    var era = ip>0 ? (er*27/ip).toFixed(2) : '—';
-    var whip = ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : '—';
+    var era = '—', whip = '—';
+    if (splits.length > 0) {
+      // Use API-provided ERA and WHIP from the last split (combined season stat)
+      var lastSplit = splits[splits.length-1].stat;
+      era = lastSplit.era || (ip>0 ? (er*27/ip).toFixed(2) : '—');
+      whip = lastSplit.whip || (ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : '—');
+    }
     var ab = bf-bb-hbp;
     var baa = ab>0 ? (h/ab).toFixed(3) : '—';
     var totalBases = 0;
@@ -429,7 +434,7 @@ function renderPitchers() {
     return '<tr><td><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span>' + statusBadge(p.status) + '<span class="team-tag">' + (p.team||'—') + ' · P</span>' + noteHTML + '</td>' +
       '<td>' + fmt(s.w) + '</td><td>' + fmt(s.l) + '</td><td>' + fmt(s.g) + '</td><td>' + fmt(s.gs) + '</td>' +
       '<td>' + fmt(s.era) + trendIndicator(s.era, trend.era, true) + '</td>' +
-  '<td>' + fmt(s.fip) + '</td><td>' + fmt(s.ip) + '</td><td>' + fmt(s.h) + '</td>' +
+      '<td>' + fmt(s.fip) + '</td><td>' + fmt(s.ip) + '</td>' +
       '<td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
