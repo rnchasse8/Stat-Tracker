@@ -412,7 +412,7 @@ function renderPitchers() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="20"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
+    if (!s) return '<tr><td colspan="20" style="color:var(--muted);font-size:0.85rem;padding:12px 8px">No ' + season + ' stats available yet</td></tr>';
     var trend = pitcherTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
@@ -438,7 +438,7 @@ function renderHitters() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="15"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
+    if (!s) return '<tr><td colspan="15" style="color:var(--muted);font-size:0.85rem;padding:12px 8px">No ' + season + ' stats available yet</td></tr>';
     var trend = hitterTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
