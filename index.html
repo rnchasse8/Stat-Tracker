@@ -713,15 +713,15 @@ async function renderModalCharts(p) {
     if (!splits.length) { box.innerHTML = '<div class="empty-state"><h2>Not enough data for charts</h2></div>'; return; }
     if (p.type === 'pitcher') {
       // Build cumulative rolling arrays
-      var cumIP=0,cumER=0,cumH=0,cumBB=0,cumHBP=0,cumHR=0,cumSO=0,cumAB=0;
-      var labels=[],eras=[],fips=[],whips=[],baas=[];
+      var cumIP=0,cumER=0,cumH=0,cumBB=0,cumHBP=0,cumHR=0,cumSO=0,cumAB=0,cumBF=0;
+      var labels=[],eras=[],fips=[],whips=[],baas=[],kPcts=[],bbPcts=[];
       splits.forEach(function(s,i) {
         var st=s.stat;
         var outs=Math.round(parseFloat(st.inningsPitched||0)*3);
         cumIP+=outs; cumER+=st.earnedRuns||0; cumH+=st.hits||0;
         cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
         cumHBP+=st.hitBatsmen||0; cumHR+=st.homeRuns||0; cumSO+=st.strikeOuts||0;
-        // AB approx: battersFaced - BB - HBP
+        cumBF+=st.battersFaced||0;
         var bf=st.battersFaced||0;
         cumAB+=(bf-(st.baseOnBalls||0)-(st.intentionalWalks||0)-(st.hitBatsmen||0));
         labels.push(s.date||('G'+(i+1)));
@@ -729,11 +729,15 @@ async function renderModalCharts(p) {
         fips.push(cumIP>0 ? +(((13*cumHR)+(3*(cumBB+cumHBP))-(2*cumSO))/(cumIP/3)+3.10).toFixed(2) : null);
         whips.push(cumIP>0 ? +((cumBB+cumH)/(cumIP/3)).toFixed(2) : null);
         baas.push(cumAB>0 ? +(cumH/cumAB).toFixed(3) : null);
+        kPcts.push(cumBF>0 ? +(cumSO/cumBF*100).toFixed(1) : null);
+        bbPcts.push(cumBF>0 ? +(cumBB/cumBF*100).toFixed(1) : null);
       });
 
       box.innerHTML =
         '<div class="chart-title">Rolling ERA &amp; FIP</div><div class="chart-wrap"><canvas id="chart-era-fip"></canvas></div>' +
-        '<div class="chart-title">Rolling WHIP &amp; BAA</div><div class="chart-wrap"><canvas id="chart-whip-baa"></canvas></div>';
+        '<div class="chart-title">Rolling WHIP</div><div class="chart-wrap"><canvas id="chart-whip"></canvas></div>' +
+        '<div class="chart-title">Rolling BAA</div><div class="chart-wrap"><canvas id="chart-baa"></canvas></div>' +
+        '<div class="chart-title">Rolling K% &amp; BB%</div><div class="chart-wrap"><canvas id="chart-kbb"></canvas></div>';
 
       setTimeout(function() {
         trendCharts['era-fip'] = new Chart(document.getElementById('chart-era-fip'), {
@@ -744,13 +748,27 @@ async function renderModalCharts(p) {
           ]},
           options:chartOpts()
         });
-        trendCharts['whip-baa'] = new Chart(document.getElementById('chart-whip-baa'), {
+        trendCharts['whip'] = new Chart(document.getElementById('chart-whip'), {
           type:'line',
           data:{labels:labels,datasets:[
-            {label:'WHIP',data:whips,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},
+            {label:'WHIP',data:whips,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false}
+          ]},
+          options:chartOpts()
+        });
+        trendCharts['baa'] = new Chart(document.getElementById('chart-baa'), {
+          type:'line',
+          data:{labels:labels,datasets:[
             {label:'BAA',data:baas,borderColor:'#f5a623',tension:0.3,pointRadius:3,fill:false}
           ]},
           options:chartOpts()
+        });
+        trendCharts['kbb'] = new Chart(document.getElementById('chart-kbb'), {
+          type:'line',
+          data:{labels:labels,datasets:[
+            {label:'K%',data:kPcts,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},
+            {label:'BB%',data:bbPcts,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}
+          ]},
+          options:chartOpts('%')
         });
       }, 50);
 
@@ -781,8 +799,11 @@ async function renderModalCharts(p) {
   } catch(e) { box.innerHTML = '<div class="empty-state"><h2>Failed to load chart data</h2></div>'; }
 }
 
-function chartOpts() {
-  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},y:{ticks:{color:'#5a8aaa'},grid:{color:'#1a2e44'}}}};
+function chartOpts(suffix) {
+  var yTicks = suffix === '%'
+    ? {color:'#5a8aaa', callback: function(v){ return v + '%'; }}
+    : {color:'#5a8aaa'};
+  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},y:{ticks:yTicks,grid:{color:'#1a2e44'}}}};
 }
 
 function switchModalTab(tab) {
