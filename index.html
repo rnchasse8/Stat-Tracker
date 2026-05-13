@@ -422,14 +422,14 @@ function renderPitchers() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="18"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
+    if (!s) return '<tr><td><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span><span class="team-tag">' + (p.team||'—') + ' · P</span></td><td colspan="17" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
     var trend = pitcherTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
     return '<tr><td><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span>' + statusBadge(p.status) + '<span class="team-tag">' + (p.team||'—') + ' · P</span>' + noteHTML + '</td>' +
       '<td>' + fmt(s.w) + '</td><td>' + fmt(s.l) + '</td><td>' + fmt(s.g) + '</td><td>' + fmt(s.gs) + '</td>' +
       '<td>' + fmt(s.era) + trendIndicator(s.era, trend.era, true) + '</td>' +
-     '<td>' + fmt(s.fip) + '</td><td>' + fmt(s.ip) + '</td><td>' + fmt(s.h) + '</td>' +
+      '<td>' + fmt(s.fip) + '</td><td>' + fmt(s.ip) + '</td>' +
       '<td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
@@ -448,7 +448,7 @@ function renderHitters() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="15"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
+    if (!s) return '<tr><td><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span><span class="team-tag">' + (p.team||'—') + ' · ' + (p.pos||'OF') + '</span></td><td colspan="14" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
     var trend = hitterTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
