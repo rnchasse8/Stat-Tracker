@@ -223,7 +223,9 @@
 const API = 'https://statsapi.mlb.com/api/v1';
 const SPORT_IDS = [1,11,12,13,14,15,16];
 
-function proxiedFetch(url) { return fetch(url); }
+function proxiedFetch(url) {
+  return fetch(url);
+}
 
 async function fetchWithSportIdFallback(buildUrl) {
   for (const id of SPORT_IDS) {
@@ -246,6 +248,7 @@ let statsCache = {};
 let sortState = { pitchers: { col: 'era', dir: 1 }, hitters: { col: 'avg', dir: 1 } };
 let currentModalPlayer = null;
 let trendCharts = {};
+let searchTimeout;
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -291,12 +294,8 @@ function aggregateSplits(splits, type) {
       totalPitches+=st.numberOfPitches||0;
     });
     var ipReal = Math.floor(ip/3)+(ip%3)/10;
-    var era = '—', whip = '—';
-    if (splits.length > 0) {
-      var lastSplit = splits[splits.length-1].stat;
-      era = lastSplit.era || (ip>0 ? (er*27/ip).toFixed(2) : '—');
-      whip = lastSplit.whip || (ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : '—');
-    }
+    var era = ip>0 ? (er*27/ip).toFixed(2) : '—';
+    var whip = ip>0 ? ((bb+h)/(ip/3)).toFixed(2) : '—';
     var ab = bf-bb-hbp;
     var baa = ab>0 ? (h/ab).toFixed(3) : '—';
     var totalBases = 0;
@@ -307,9 +306,16 @@ function aggregateSplits(splits, type) {
     var bbPct = bf>0 ? (bb/bf*100).toFixed(1)+'%' : '—';
     var pitchesPerGame = g>0 ? (totalPitches/g).toFixed(1) : '—';
     var totalStrikes = 0;
-    splits.forEach(function(s) { totalStrikes += s.stat.strikes||0; });
+    var totalCalledStrikes = 0;
+    var totalSwingingStrikes = 0;
+    splits.forEach(function(s) {
+      totalStrikes += s.stat.strikes||0;
+      totalCalledStrikes += s.stat.strikesCalled||0;
+      totalSwingingStrikes += s.stat.strikesSwinging||0;
+    });
     var strikePct = totalPitches>0 ? (totalStrikes/totalPitches*100).toFixed(1)+'%' : '—';
-    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct};
+    var cswPct = totalPitches>0 ? ((totalCalledStrikes+totalSwingingStrikes)/totalPitches*100).toFixed(1)+'%' : '—';
+    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,kPct:kPct,bbPct:bbPct,totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct,cswPct:cswPct};
   } else {
     var g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
     splits.forEach(function(s) {
@@ -355,7 +361,9 @@ function statusBadge(status) {
   return '<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid ' + color + ';color:' + color + ';margin-left:5px;vertical-align:middle">' + status + '</span>';
 }
 
-function getNotes(id) { return localStorage.getItem('note-' + id) || ''; }
+function getNotes(id) {
+  return localStorage.getItem('note-' + id) || '';
+}
 
 function saveNote(id, text) {
   if (text.trim()) localStorage.setItem('note-' + id, text.trim());
@@ -401,7 +409,9 @@ function trendIndicator(current, last5, lowerIsBetter) {
   return better ? '<span style="color:var(--green);font-size:0.75rem;margin-left:4px">▲</span>' : '<span style="color:var(--red);font-size:0.75rem;margin-left:4px">▼</span>';
 }
 
-function renderAll() { renderPitchers(); renderHitters(); updateGameLogDropdown(); updateCounts(); }
+function renderAll() {
+  renderPitchers(); renderHitters(); updateGameLogDropdown(); updateCounts();
+}
 
 function renderPitchers() {
   var pitchers = players.filter(function(p) { return p.type==='pitcher'; });
@@ -412,7 +422,7 @@ function renderPitchers() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="20" style="padding:12px 8px"><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span><span style="color:var(--muted);font-size:0.82rem;margin-left:10px">— No ' + season + ' stats to display</span></td></tr>';
+    if (!s) return '<tr><td colspan="18"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
     var trend = pitcherTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
@@ -420,7 +430,7 @@ function renderPitchers() {
       '<td>' + fmt(s.w) + '</td><td>' + fmt(s.l) + '</td><td>' + fmt(s.g) + '</td><td>' + fmt(s.gs) + '</td>' +
       '<td>' + fmt(s.era) + trendIndicator(s.era, trend.era, true) + '</td>' +
       '<td>' + fmt(s.fip) + '</td><td>' + fmt(s.ip) + '</td>' +
-      '<td>' + fmt(s.h) + '</td><td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
+      '<td>' + fmt(s.so) + '</td><td>' + fmt(s.bb) + '</td>' +
       '<td>' + fmt(s.kPct) + '</td><td>' + fmt(s.bbPct) + '</td>' +
       '<td>' + fmt(s.whip) + trendIndicator(s.whip, trend.whip, true) + '</td>' +
       '<td>' + fmt(s.baa) + '</td><td>' + fmt(s.slgAgainst) + '</td><td>' + fmt(s.hr) + '</td>' +
@@ -438,7 +448,7 @@ function renderHitters() {
     var key = p.id + '-' + season;
     var s = statsCache[key] && statsCache[key].agg;
     var splits = (statsCache[key] && statsCache[key].splits) || [];
-    if (!s) return '<tr><td colspan="15" style="padding:12px 8px"><span class="player-name" onclick="openModal(' + p.id + ')">' + p.name + '</span><span style="color:var(--muted);font-size:0.82rem;margin-left:10px">— No ' + season + ' stats to display</span></td></tr>';
+    if (!s) return '<tr><td colspan="15"><div class="loading"><span class="spinner"></span>Loading...</div></td></tr>';
     var trend = hitterTrend(splits);
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: ' + (note.length>40 ? note.substring(0,40)+'…' : note) + '</span>' : '';
@@ -541,7 +551,9 @@ function removePlayer(id) {
   savePlayers(); renderAll();
 }
 
-function savePlayers() { localStorage.setItem('farmPlayers', JSON.stringify(players)); }
+function savePlayers() {
+  localStorage.setItem('farmPlayers', JSON.stringify(players));
+}
 
 async function refreshStatuses() {
   showToast('Refreshing statuses...');
@@ -556,7 +568,9 @@ async function refreshStatuses() {
       }
     } catch(e) {}
   }));
-  savePlayers(); renderAll(); showToast('Statuses updated!');
+  savePlayers();
+  renderAll();
+  showToast('Statuses updated!');
 }
 
 function updateGameLogDropdown() {
@@ -712,66 +726,25 @@ async function renderModalCharts(p) {
     });
     if (!splits.length) { box.innerHTML = '<div class="empty-state"><h2>Not enough data for charts</h2></div>'; return; }
     if (p.type === 'pitcher') {
-      // Build cumulative rolling arrays
-      var cumIP=0,cumER=0,cumH=0,cumBB=0,cumHBP=0,cumHR=0,cumSO=0,cumAB=0,cumBF=0;
-      var labels=[],eras=[],fips=[],whips=[],baas=[],kPcts=[],bbPcts=[];
+      var cumIP=0,cumER=0,cumH=0,cumBB=0,cumHBP=0,cumHR=0,cumSO=0;
+      var labels=[],eras=[],whips=[],fips=[];
       splits.forEach(function(s,i) {
         var st=s.stat;
         var outs=Math.round(parseFloat(st.inningsPitched||0)*3);
         cumIP+=outs; cumER+=st.earnedRuns||0; cumH+=st.hits||0;
         cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
         cumHBP+=st.hitBatsmen||0; cumHR+=st.homeRuns||0; cumSO+=st.strikeOuts||0;
-        cumBF+=st.battersFaced||0;
-        var bf=st.battersFaced||0;
-        cumAB+=(bf-(st.baseOnBalls||0)-(st.intentionalWalks||0)-(st.hitBatsmen||0));
         labels.push(s.date||('G'+(i+1)));
         eras.push(cumIP>0 ? +(cumER*27/cumIP).toFixed(2) : null);
-        fips.push(cumIP>0 ? +(((13*cumHR)+(3*(cumBB+cumHBP))-(2*cumSO))/(cumIP/3)+3.10).toFixed(2) : null);
         whips.push(cumIP>0 ? +((cumBB+cumH)/(cumIP/3)).toFixed(2) : null);
-        baas.push(cumAB>0 ? +(cumH/cumAB).toFixed(3) : null);
-        kPcts.push(cumBF>0 ? +(cumSO/cumBF*100).toFixed(1) : null);
-        bbPcts.push(cumBF>0 ? +(cumBB/cumBF*100).toFixed(1) : null);
+        fips.push(cumIP>0 ? +(((13*cumHR)+(3*(cumBB+cumHBP))-(2*cumSO))/(cumIP/3)+3.10).toFixed(2) : null);
       });
-
-      box.innerHTML =
-        '<div class="chart-title">Rolling ERA &amp; FIP</div><div class="chart-wrap"><canvas id="chart-era-fip"></canvas></div>' +
-        '<div class="chart-title">Rolling WHIP</div><div class="chart-wrap"><canvas id="chart-whip"></canvas></div>' +
-        '<div class="chart-title">Rolling BAA</div><div class="chart-wrap"><canvas id="chart-baa"></canvas></div>' +
-        '<div class="chart-title">Rolling K% &amp; BB%</div><div class="chart-wrap"><canvas id="chart-kbb"></canvas></div>';
-
+      box.innerHTML = '<div class="chart-title">Season Rolling ERA</div><div class="chart-wrap"><canvas id="chart-era"></canvas></div>' +
+        '<div class="chart-title">Season Rolling WHIP / FIP</div><div class="chart-wrap"><canvas id="chart-wf"></canvas></div>';
       setTimeout(function() {
-        trendCharts['era-fip'] = new Chart(document.getElementById('chart-era-fip'), {
-          type:'line',
-          data:{labels:labels,datasets:[
-            {label:'ERA',data:eras,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},
-            {label:'FIP',data:fips,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}
-          ]},
-          options:chartOpts()
-        });
-        trendCharts['whip'] = new Chart(document.getElementById('chart-whip'), {
-          type:'line',
-          data:{labels:labels,datasets:[
-            {label:'WHIP',data:whips,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false}
-          ]},
-          options:chartOpts()
-        });
-        trendCharts['baa'] = new Chart(document.getElementById('chart-baa'), {
-          type:'line',
-          data:{labels:labels,datasets:[
-            {label:'BAA',data:baas,borderColor:'#f5a623',tension:0.3,pointRadius:3,fill:false}
-          ]},
-          options:chartOpts()
-        });
-        trendCharts['kbb'] = new Chart(document.getElementById('chart-kbb'), {
-          type:'line',
-          data:{labels:labels,datasets:[
-            {label:'K%',data:kPcts,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},
-            {label:'BB%',data:bbPcts,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}
-          ]},
-          options:chartOpts('%')
-        });
+        trendCharts['era'] = new Chart(document.getElementById('chart-era'), {type:'line',data:{labels:labels,datasets:[{label:'ERA',data:eras,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
+        trendCharts['wf'] = new Chart(document.getElementById('chart-wf'), {type:'line',data:{labels:labels,datasets:[{label:'WHIP',data:whips,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},{label:'FIP',data:fips,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
       }, 50);
-
     } else {
       var cumAB=0,cumH=0,cumBB=0,cumHBP=0,cumSF=0,cumTB=0;
       var labels=[],avgs=[],obps=[],slgs=[];
@@ -789,21 +762,14 @@ async function renderModalCharts(p) {
       });
       box.innerHTML = '<div class="chart-title">Season Rolling AVG / OBP / SLG</div><div class="chart-wrap"><canvas id="chart-avg"></canvas></div>';
       setTimeout(function() {
-        trendCharts['avg'] = new Chart(document.getElementById('chart-avg'), {type:'line',data:{labels:labels,datasets:[
-          {label:'AVG',data:avgs,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},
-          {label:'OBP',data:obps,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},
-          {label:'SLG',data:slgs,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}
-        ]},options:chartOpts()});
+        trendCharts['avg'] = new Chart(document.getElementById('chart-avg'), {type:'line',data:{labels:labels,datasets:[{label:'AVG',data:avgs,borderColor:'#64d2ff',tension:0.3,pointRadius:3,fill:false},{label:'OBP',data:obps,borderColor:'#52c97a',tension:0.3,pointRadius:3,fill:false},{label:'SLG',data:slgs,borderColor:'#e05252',tension:0.3,pointRadius:3,fill:false}]},options:chartOpts()});
       }, 50);
     }
   } catch(e) { box.innerHTML = '<div class="empty-state"><h2>Failed to load chart data</h2></div>'; }
 }
 
-function chartOpts(suffix) {
-  var yTicks = suffix === '%'
-    ? {color:'#5a8aaa', callback: function(v){ return v + '%'; }}
-    : {color:'#5a8aaa'};
-  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},y:{ticks:yTicks,grid:{color:'#1a2e44'}}}};
+function chartOpts() {
+  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},y:{ticks:{color:'#5a8aaa'},grid:{color:'#1a2e44'}}}};
 }
 
 function switchModalTab(tab) {
