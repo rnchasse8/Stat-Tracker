@@ -535,6 +535,15 @@ async function addPlayerFromSearch(id) {
     if (!p) return;
     var pos = (p.primaryPosition && p.primaryPosition.abbreviation) || 'OF';
     var isPitcher = pos==='P' || pos==='SP' || pos==='RP';
+    if (existingPitcher && existingHitter) { showToast(p.fullName + ' is already on both rosters'); return; }
+    if (isPitcher && existingPitcher && !existingHitter) {
+      if (!confirm('Add ' + p.fullName + ' as a hitter too?')) return;
+      isPitcher = false;
+    }
+    if (!isPitcher && existingHitter && !existingPitcher) {
+      if (!confirm('Add ' + p.fullName + ' as a pitcher too?')) return;
+      isPitcher = true;
+    }
     var status = extractStatus(p);
     var player = { id: p.id, name: p.fullName, team: (p.currentTeam && p.currentTeam.name) || '—', pos: pos, type: isPitcher ? 'pitcher' : 'hitter', status: status };
     players.push(player);
