@@ -527,14 +527,17 @@ document.addEventListener('click', function(e) {
 async function addPlayerFromSearch(id) {
   document.getElementById('searchResults').style.display = 'none';
   document.getElementById('searchInput').value = '';
-  if (players.find(function(p) { return p.id===id; })) { showToast('Player already on roster'); return; }
+  var existingPitcher = players.find(function(p) { return p.id===id && p.type==='pitcher'; });
+  var existingHitter = players.find(function(p) { return p.id===id && p.type==='hitter'; });
+  if (existingPitcher && existingHitter) { showToast('Player already on both rosters'); return; }
   try {
     var r = await proxiedFetch(API + '/people/' + id + '?hydrate=currentTeam,rosterEntries');
     var d = await r.json();
     var p = d.people && d.people[0];
     if (!p) return;
     var pos = (p.primaryPosition && p.primaryPosition.abbreviation) || 'OF';
-    var isPitcher = pos==='P' || pos==='SP' || pos==='RP';
+    var isPitcher if (existingPitcher && !existingHitter) { isPitcher = false; }
+  if (existingHitter && !existingPitcher) { isPitcher = true; }
     if (existingPitcher && existingHitter) { showToast(p.fullName + ' is already on both rosters'); return; }
     if (isPitcher && existingPitcher && !existingHitter) {
       if (!confirm('Add ' + p.fullName + ' as a hitter too?')) return;
