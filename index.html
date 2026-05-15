@@ -225,6 +225,27 @@ var SPORT_IDS = [1,11,12,13,14,15,16];
 
 function proxiedFetch(url) { return fetch(url); }
 
+async function fetchAllLevels(buildUrl) {
+  var seen = {};
+  var allSplits = [];
+  for (var i = 0; i < SPORT_IDS.length; i++) {
+    try {
+      var r = await proxiedFetch(buildUrl(SPORT_IDS[i]));
+      if (!r.ok) continue;
+      var d = await r.json();
+      var splits = d.stats && d.stats[0] && d.stats[0].splits ? d.stats[0].splits : [];
+      for (var j = 0; j < splits.length; j++) {
+        var teamId = splits[j].team && splits[j].team.id ? splits[j].team.id : 'x'+i+j;
+        if (!seen[teamId]) {
+          seen[teamId] = true;
+          allSplits.push(splits[j]);
+        }
+      }
+    } catch(e) {}
+  }
+  return allSplits;
+}
+
 async function fetchWithSportIdFallback(buildUrl) {
   for (var i = 0; i < SPORT_IDS.length; i++) {
     try {
@@ -236,6 +257,21 @@ async function fetchWithSportIdFallback(buildUrl) {
     } catch(e) {}
   }
   return [];
+}
+
+async function findYesterdayGame(p, dateStr) {
+  var group = p.type==='pitcher'?'pitching':'hitting';
+  for (var i = 0; i < SPORT_IDS.length; i++) {
+    try {
+      var r = await proxiedFetch(API+'/people/'+p.id+'/stats?stats=gameLog&season='+season+'&group='+group+'&sportId='+SPORT_IDS[i]);
+      if (!r.ok) continue;
+      var d = await r.json();
+      var splits = d.stats && d.stats[0] && d.stats[0].splits ? d.stats[0].splits : [];
+      var game = splits.find(function(s){return s.date===dateStr;});
+      if (game) return game;
+    } catch(e) {}
+  }
+  return null;
 }
 
 var season = 2026;
@@ -268,11 +304,11 @@ async function refreshAll() {
 }
 
 async function fetchStats(p) {
-  var key = p.id + '-' + season + '-' + p.type;
+  var key = p.id+'-'+season+'-'+p.type;
   if (statsCache[key]) return statsCache[key];
   var group = p.type === 'pitcher' ? 'pitching' : 'hitting';
-  var splits = await fetchWithSportIdFallback(function(id) {
-    return API + '/people/' + p.id + '/stats?stats=season&season=' + season + '&group=' + group + '&sportId=' + id;
+  var splits = await fetchAllLevels(function(id) {
+    return API+'/people/'+p.id+'/stats?stats=season&season='+season+'&group='+group+'&sportId='+id;
   });
   var agg = splits.length > 0 ? aggregateSplits(splits, p.type) : null;
   statsCache[key] = { splits: splits, agg: agg };
@@ -281,7 +317,7 @@ async function fetchStats(p) {
 
 function aggregateSplits(splits, type) {
   if (type === 'pitcher') {
-    var w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0,totalPitches=0,totalStrikes=0;
+    var w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0,totalPitches=0,totalStrikes=0,totalBases=0;
     splits.forEach(function(s) {
       var st = s.stat;
       w+=st.wins||0; l+=st.losses||0; g+=st.gamesPitched||0; gs+=st.gamesStarted||0;
@@ -290,6 +326,7 @@ function aggregateSplits(splits, type) {
       bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
       so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; bf+=st.battersFaced||0;
       totalPitches+=st.numberOfPitches||0; totalStrikes+=st.strikes||0;
+      totalBases+=st.totalBases||0;
     });
     var ipReal = Math.floor(ip/3)+(ip%3)/10;
     var era = ip>0 ? (er*27/ip).toFixed(2) : '—';
@@ -301,8 +338,6 @@ function aggregateSplits(splits, type) {
     var bbPct = bf>0 ? (bb/bf*100).toFixed(1)+'%' : '—';
     var pitchesPerGame = g>0 ? (totalPitches/g).toFixed(1) : '—';
     var strikePct = totalPitches>0 ? (totalStrikes/totalPitches*100).toFixed(1)+'%' : '—';
-    var totalBases = 0;
-    splits.forEach(function(s) { totalBases += s.stat.totalBases||0; });
     var slgAgainst = ab>0 ? (totalBases/ab).toFixed(3) : '—';
     return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,
             era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,kPct:kPct,bbPct:bbPct,
@@ -409,7 +444,7 @@ function renderPitchers() {
     var splits = (statsCache[key] && statsCache[key].splits) || [];
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: '+(note.length>40?note.substring(0,40)+'…':note)+'</span>' : '';
-    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">' + p.name + '</span><span class="team-tag">'+(p.team||'—')+' · P</span></td><td colspan="19" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
+    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span><span class="team-tag">'+(p.team||'—')+' · P</span></td><td colspan="19" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
     var trend = pitcherTrend(splits);
     return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span>'+statusBadge(p.status)+'<span class="team-tag">'+(p.team||'—')+' · P</span>'+noteHTML+'</td>'+
       '<td>'+fmt(s.w)+'</td><td>'+fmt(s.l)+'</td><td>'+fmt(s.g)+'</td><td>'+fmt(s.gs)+'</td>'+
@@ -438,7 +473,7 @@ function renderHitters() {
     var splits = (statsCache[key] && statsCache[key].splits) || [];
     var note = getNotes(p.id);
     var noteHTML = note ? '<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: '+(note.length>40?note.substring(0,40)+'…':note)+'</span>' : '';
-    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">' + p.name + '</span><span class="team-tag">'+(p.team||'—')+' · '+(p.pos||'OF')+'</span></td><td colspan="14" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
+    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span><span class="team-tag">'+(p.team||'—')+' · '+(p.pos||'OF')+'</span></td><td colspan="14" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td></tr>';
     var trend = hitterTrend(splits);
     return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span>'+statusBadge(p.status)+'<span class="team-tag">'+(p.team||'—')+' · '+(p.pos||'OF')+'</span>'+noteHTML+'</td>'+
       '<td>'+fmt(s.g)+'</td><td>'+fmt(s.ab)+'</td>'+
@@ -454,10 +489,8 @@ function renderHitters() {
 function sortPlayers(list, col, dir) {
   return list.slice().sort(function(a,b) {
     if (col==='name') return dir*a.name.localeCompare(b.name);
-    var keyA = a.id+'-'+season+'-'+a.type;
-    var keyB = b.id+'-'+season+'-'+b.type;
-    var sa = statsCache[keyA] && statsCache[keyA].agg;
-    var sb = statsCache[keyB] && statsCache[keyB].agg;
+    var sa = statsCache[a.id+'-'+season+'-'+a.type] && statsCache[a.id+'-'+season+'-'+a.type].agg;
+    var sb = statsCache[b.id+'-'+season+'-'+b.type] && statsCache[b.id+'-'+season+'-'+b.type].agg;
     if (!sa||!sb) return 0;
     return dir*((parseFloat(sa[col])||0)-(parseFloat(sb[col])||0));
   });
@@ -718,8 +751,8 @@ async function renderModalCharts(p) {
       var labels=[],eras=[],whips=[],fips=[];
       splits.forEach(function(s,i){
         var st=s.stat;
-        var outs=Math.round(parseFloat(st.inningsPitched||0)*3);
-        cumIP+=outs; cumER+=st.earnedRuns||0; cumH+=st.hits||0;
+        cumIP+=Math.round(parseFloat(st.inningsPitched||0)*3);
+        cumER+=st.earnedRuns||0; cumH+=st.hits||0;
         cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
         cumHBP+=st.hitBatsmen||0; cumHR+=st.homeRuns||0; cumSO+=st.strikeOuts||0;
         labels.push(s.date||('G'+(i+1)));
@@ -757,7 +790,8 @@ async function renderModalCharts(p) {
 }
 
 function chartOpts() {
-  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},
+  return {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},
     scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},
             y:{ticks:{color:'#5a8aaa'},grid:{color:'#1a2e44'}}}};
 }
@@ -782,11 +816,7 @@ async function loadRecap() {
   var results=[];
   var seen={};
   await Promise.all(players.map(async function(p){
-    var group=p.type==='pitcher'?'pitching':'hitting';
-    var splits=await fetchWithSportIdFallback(function(sid){
-      return API+'/people/'+p.id+'/stats?stats=gameLog&season='+season+'&group='+group+'&sportId='+sid;
-    });
-    var game=splits.find(function(s){return s.date===dateStr;});
+    var game = await findYesterdayGame(p, dateStr);
     var uid=p.id+'-'+p.type;
     if (game&&!seen[uid]) { seen[uid]=true; results.push({p:p,stat:game.stat,opponent:(game.opponent&&game.opponent.name)||'—'}); }
   }));
