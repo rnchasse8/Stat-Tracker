@@ -185,8 +185,18 @@
 
   <div id="view-recap" style="display:none">
     <div class="meta-bar" style="margin-bottom:20px">
-      <span id="recap-date-label">Loading yesterday's games...</span>
-      <button class="btn-ghost" onclick="loadRecap()">↻ Refresh</button>
+      <span id="recap-date-label">Loading...</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:4px;">
+          <button id="recap-btn-0" class="btn-ghost" onclick="setRecapDay(0)" style="font-size:0.8rem;padding:6px 10px">Today</button>
+          <button id="recap-btn-1" class="btn-ghost" onclick="setRecapDay(1)" style="font-size:0.8rem;padding:6px 10px">-1</button>
+          <button id="recap-btn-2" class="btn-ghost" onclick="setRecapDay(2)" style="font-size:0.8rem;padding:6px 10px">-2</button>
+          <button id="recap-btn-3" class="btn-ghost" onclick="setRecapDay(3)" style="font-size:0.8rem;padding:6px 10px">-3</button>
+          <button id="recap-btn-4" class="btn-ghost" onclick="setRecapDay(4)" style="font-size:0.8rem;padding:6px 10px">-4</button>
+          <button id="recap-btn-5" class="btn-ghost" onclick="setRecapDay(5)" style="font-size:0.8rem;padding:6px 10px">-5</button>
+        </div>
+        <button class="btn-ghost" onclick="loadRecap()">↻ Refresh</button>
+      </div>
     </div>
     <div id="recap-content"><div class="loading"><span class="spinner"></span>Loading...</div></div>
   </div>
@@ -514,7 +524,7 @@ function switchTab(tab) {
     document.getElementById('view-'+t).style.display = t===tab?'block':'none';
   });
   if (tab==='gamelog') updateGameLogDropdown();
-  if (tab==='recap') loadRecap();
+  if (tab==='recap') { setRecapDay(1); }
   if (tab==='workload') loadWorkload();
 }
 
@@ -805,14 +815,26 @@ function switchModalTab(tab) {
   else renderModalCharts(currentModalPlayer);
 }
 
+var recapDayOffset = 1;
+
+function setRecapDay(offset) {
+  recapDayOffset = offset;
+  for (var i=0; i<=5; i++) {
+    var btn = document.getElementById('recap-btn-'+i);
+    if (btn) btn.style.borderColor = i===offset ? 'var(--yellow)' : '';
+    if (btn) btn.style.color = i===offset ? 'var(--yellow)' : '';
+  }
+  loadRecap();
+}
+
 async function loadRecap() {
   if (!players.length) { document.getElementById('recap-content').innerHTML='<div class="empty-state"><h2>No players on your roster yet</h2></div>'; return; }
   var box = document.getElementById('recap-content');
-  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading yesterday\'s stats...</div>';
-  var yesterday = new Date();
-  yesterday.setDate(yesterday.getDate()-1);
-  var dateStr = yesterday.toISOString().split('T')[0];
-  document.getElementById('recap-date-label').textContent='Recap for '+yesterday.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading stats...</div>';
+  var targetDate = new Date();
+  targetDate.setDate(targetDate.getDate()-recapDayOffset);
+  var dateStr = targetDate.toISOString().split('T')[0];
+  document.getElementById('recap-date-label').textContent='Recap for '+targetDate.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   var results=[];
   var seen={};
   await Promise.all(players.map(async function(p){
