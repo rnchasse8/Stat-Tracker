@@ -269,7 +269,29 @@ async function fetchWithSportIdFallback(buildUrl) {
   return [];
 }
 
-async function findYesterdayGame(p, dateStr) {
+async function fetchAllGameLogs(buildUrl) {
+  var seen = {};
+  var allSplits = [];
+  for (var i = 0; i < SPORT_IDS.length; i++) {
+    try {
+      var r = await proxiedFetch(buildUrl(SPORT_IDS[i]));
+      if (!r.ok) continue;
+      var d = await r.json();
+      var splits = d.stats && d.stats[0] && d.stats[0].splits ? d.stats[0].splits : [];
+      splits.forEach(function(s) {
+        var gameKey = s.date + '-' + (s.opponent && s.opponent.id ? s.opponent.id : '') + '-' + (s.stat.inningsPitched || s.stat.atBats || '');
+        if (!seen[gameKey]) {
+          seen[gameKey] = true;
+          allSplits.push(s);
+        }
+      });
+    } catch(e) {}
+  }
+  allSplits.sort(function(a, b) {
+    return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+  });
+  return allSplits;
+}
   var group = p.type==='pitcher'?'pitching':'hitting';
   for (var i = 0; i < SPORT_IDS.length; i++) {
     try {
@@ -635,7 +657,7 @@ async function loadGameLog() {
   box.innerHTML='<div class="loading"><span class="spinner"></span>Loading game log...</div>';
   var p = players.find(function(pl){return pl.id===id&&pl.type===type;});
   var group = p.type==='pitcher'?'pitching':'hitting';
-  var splits = await fetchWithSportIdFallback(function(sid){
+  var splits = await fetchAllGameLogs(function(sid){
     return API+'/people/'+id+'/stats?stats=gameLog&season='+season+'&group='+group+'&sportId='+sid;
   });
   if (!splits.length) { box.innerHTML='<div class="empty-state"><h2>No game log data found</h2></div>'; return; }
@@ -902,7 +924,7 @@ async function loadWorkload() {
   box.innerHTML='<div class="loading"><span class="spinner"></span>Loading workload data...</div>';
   var results=[];
   await Promise.all(pitchers.map(async function(p){
-    var splits=await fetchWithSportIdFallback(function(sid){
+    var splits=await fetchAllGameLogs(function(sid){
       return API+'/people/'+p.id+'/stats?stats=gameLog&season='+season+'&group=pitching&sportId='+sid;
     });
     results.push({p:p,splits:splits.slice(-10).reverse()});
