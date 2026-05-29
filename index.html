@@ -291,7 +291,7 @@ async function fetchAllGameLogs(buildUrl) {
     return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
   });
   return allSplits;
-}
+}async function findYesterdayGame(p, dateStr) {
   var group = p.type==='pitcher'?'pitching':'hitting';
   for (var i = 0; i < SPORT_IDS.length; i++) {
     try {
