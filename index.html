@@ -439,7 +439,13 @@ function extractStatus(person) {
 
 function statusBadge(status) {
   if (!status||status==='Active') return '';
-  var color=(status.indexOf('IL')>=0||status.indexOf('Injured')>=0)?'var(--red)':status.indexOf('Day-to-Day')>=0?'#f5a623':'var(--muted)';
+  var s=status.toLowerCase();
+  var color;
+  if (s.indexOf('injured')>=0||s.indexOf('disabled list')>=0||/\d+-day/.test(s)) color='var(--red)';                                    // injury / IL
+  else if (s.indexOf('day-to-day')>=0||s.indexOf('day to day')>=0) color='#f5a623';                                                     // day-to-day (amber)
+  else if (s.indexOf('restricted')>=0||s.indexOf('suspend')>=0||s.indexOf('designated')>=0||s.indexOf('assignment')>=0||s.indexOf('released')>=0||s.indexOf('retired')>=0) color='#b07ce8'; // administrative (violet)
+  else if (s.indexOf('bereavement')>=0||s.indexOf('paternity')>=0||s.indexOf('maternity')>=0||s.indexOf('family')>=0||s.indexOf('military')>=0) color='#7aa7d9'; // excused absence (soft blue)
+  else color='var(--muted)';                                                                                                            // roster moves & anything else (gray catch-all)
   return '<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid '+color+';color:'+color+';margin-left:5px;vertical-align:middle">'+status+'</span>';
 }
 
