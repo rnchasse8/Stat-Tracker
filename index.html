@@ -431,10 +431,17 @@ function fmt(v) {
 
 function extractStatus(person) {
   var entries=person.rosterEntries||[];
+  if (!entries.length) return 'Active';
+  // Prefer the player's active roster stint
   for (var i=0;i<entries.length;i++) {
     if (entries[i].isActive) return entries[i].status&&entries[i].status.description?entries[i].status.description:'Active';
   }
-  return 'Active';
+  // No active stint (e.g. Retired, Released) — use the most recent entry's status
+  var latest=entries[0];
+  for (var j=1;j<entries.length;j++) {
+    if ((entries[j].startDate||'')>(latest.startDate||'')) latest=entries[j];
+  }
+  return latest.status&&latest.status.description?latest.status.description:'Active';
 }
 
 function statusBadge(status) {
