@@ -169,7 +169,7 @@
         <th onclick="sortTable('hitters','bbPct')">BB%</th>
         <th onclick="sortTable('hitters','sb')">SB</th>
         <th onclick="sortTable('hitters','cs')">CS</th>
-        <th onclick="sortTable('hitters','wrcPlus')">wRC+</th>
+        <th onclick="sortTable('hitters','opsPlus')">OPS+</th>
         <th></th>
       </tr></thead>
       <tbody id="hitter-body"></tbody>
@@ -377,7 +377,7 @@ async function refreshAll() {
   document.getElementById('lastUpdated').textContent = 'Refreshing...';
   statsCache = {};
   await Promise.all([Promise.all(players.map(function(p) { return fetchStats(p); })), refreshLeagueContext()]);
-  applyLeagueAdjustedStats();
+  await applyLeagueAdjustedStats();
   renderAll();
   document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
 }
@@ -485,9 +485,12 @@ async function getLeagueContext(seasonYear) {
   }
   var lgPA=hAB+hBB+hHBP+hSF;
   var singles=hH-h2b-h3b-hHR;
+  var lgTB=hH+h2b+2*h3b+3*hHR;
   var lgWOBA=lgPA>0?(0.69*hBB+0.72*hHBP+0.89*singles+1.27*h2b+1.62*h3b+2.10*hHR)/lgPA:null;
+  var lgOBP=lgPA>0?(hH+hBB+hHBP)/lgPA:null;
+  var lgSLG=hAB>0?lgTB/hAB:null;
   var lgERA=pIP>0?(pER*27/pIP):null;
-  var ctx={wOBA:lgWOBA,era:lgERA};
+  var ctx={wOBA:lgWOBA,era:lgERA,obp:lgOBP,slg:lgSLG};
   leagueContextCache[seasonYear]=ctx;
   return ctx;
 }
@@ -496,20 +499,65 @@ async function refreshLeagueContext() {
   try { leagueContext=await getLeagueContext(season); } catch(e) { leagueContext=null; }
 }
 
-function applyLeagueAdjustedStats() {
+var parkFactorCache = {};
+
+// Single-season park factor computed from real team run environment (home vs road),
+// since no public API/dataset exposes park factors directly (esp. for MiLB).
+// Regressed halfway toward neutral (1.0) to approximate the stability multi-year
+// factors get from averaging across seasons. Falls back to 1.0 (neutral) if the
+// team splits endpoint doesn't return usable data.
+async function getTeamParkFactor(teamId, seasonYear) {
+  if (!teamId) return 1;
+  var key=teamId+'-'+seasonYear;
+  if (parkFactorCache[key]!=null) return parkFactorCache[key];
+  try {
+    var urls=[
+      API+'/teams/'+teamId+'/stats?stats=statSplits&sitCodes=h&group=hitting&season='+seasonYear,
+      API+'/teams/'+teamId+'/stats?stats=statSplits&sitCodes=a&group=hitting&season='+seasonYear,
+      API+'/teams/'+teamId+'/stats?stats=statSplits&sitCodes=h&group=pitching&season='+seasonYear,
+      API+'/teams/'+teamId+'/stats?stats=statSplits&sitCodes=a&group=pitching&season='+seasonYear
+    ];
+    var responses=await Promise.all(urls.map(function(u){
+      return proxiedFetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+    }));
+    function extract(d){ return d&&d.stats&&d.stats[0]&&d.stats[0].splits&&d.stats[0].splits[0]?d.stats[0].splits[0].stat:null; }
+    var hh=extract(responses[0]), ha=extract(responses[1]), ph=extract(responses[2]), pa2=extract(responses[3]);
+    if (!hh||!ha||!ph||!pa2) { parkFactorCache[key]=1; return 1; }
+    var gHome=hh.gamesPlayed||ph.gamesPitched||0;
+    var gAway=ha.gamesPlayed||pa2.gamesPitched||0;
+    if (!gHome||!gAway) { parkFactorCache[key]=1; return 1; }
+    var homeRunsEnv=((hh.runs||0)+(ph.runs||0))/gHome;
+    var awayRunsEnv=((ha.runs||0)+(pa2.runs||0))/gAway;
+    if (!awayRunsEnv) { parkFactorCache[key]=1; return 1; }
+    var rawPF=homeRunsEnv/awayRunsEnv;
+    var pf=1+(rawPF-1)/2;
+    if (!isFinite(pf)||pf<=0) pf=1;
+    parkFactorCache[key]=pf;
+    return pf;
+  } catch(e) { parkFactorCache[key]=1; return 1; }
+}
+
+// True Baseball-Reference style formulas:
+// ERA+ = 100 * (lgERA * parkFactor) / playerERA
+// OPS+ = 100 * [ OBP/(lgOBP*parkFactor) + SLG/(lgSLG*parkFactor) - 1 ]
+async function applyLeagueAdjustedStats() {
   if (!leagueContext) return;
-  players.forEach(function(p) {
+  await Promise.all(players.map(async function(p) {
     var key=p.id+'-'+season+'-'+p.type;
     var entry=statsCache[key];
     if (!entry||!entry.agg) return;
     var s=entry.agg;
+    var pf=await getTeamParkFactor(p.teamId,season);
+    p._parkFactor=pf;
     if (p.type==='pitcher') {
       var eraNum=parseFloat(s.era);
-      s.eraPlus=(leagueContext.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((leagueContext.era/eraNum)*100):null;
+      s.eraPlus=(leagueContext.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((leagueContext.era*pf)/eraNum*100):null;
     } else {
-      s.wrcPlus=(leagueContext.wOBA&&s.wOBA!=null)?Math.round((s.wOBA/leagueContext.wOBA)*100):null;
+      var obpNum=parseFloat(s.obp),slgNum=parseFloat(s.slg);
+      s.opsPlus=(leagueContext.obp&&leagueContext.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
+        Math.round(100*((obpNum/(leagueContext.obp*pf))+(slgNum/(leagueContext.slg*pf))-1)):null;
     }
-  });
+  }));
 }
 
 function statPlusColor(v) {
@@ -621,7 +669,7 @@ function renderHitters() {
       '<td>'+fmt(s.hr)+'</td><td>'+fmt(s.rbi)+'</td><td>'+fmt(s.r)+'</td>'+
       '<td>'+fmt(s.kPct)+'</td><td>'+fmt(s.bbPct)+'</td>'+
       '<td>'+fmt(s.sb)+'</td><td>'+fmt(s.cs)+'</td>'+
-      '<td style="font-weight:700;color:'+statPlusColor(s.wrcPlus)+'">'+fmt(s.wrcPlus)+'</td>'+
+      '<td style="font-weight:700;color:'+statPlusColor(s.opsPlus)+'">'+fmt(s.opsPlus)+'</td>'+
       '<td><button class="remove-btn" onclick="removePlayer('+p.id+',\'hitter\')">✕</button></td></tr>';
   }).join('');
 }
@@ -715,7 +763,7 @@ async function addPlayerFromSearch(id) {
     if (existingPitcher&&!existingHitter) isPitcher=false;
     if (existingHitter&&!existingPitcher) isPitcher=true;
     var status=extractStatus(p);
-    var player={id:p.id,name:p.fullName,team:(p.currentTeam&&p.currentTeam.name)||'—',pos:pos,type:isPitcher?'pitcher':'hitter',status:status};
+    var player={id:p.id,name:p.fullName,team:(p.currentTeam&&p.currentTeam.name)||'—',teamId:(p.currentTeam&&p.currentTeam.id)||null,pos:pos,type:isPitcher?'pitcher':'hitter',status:status};
     players.push(player);
     savePlayers();
     await fetchStats(player);
@@ -742,6 +790,7 @@ async function refreshStatuses() {
       if (person) {
         p.status=extractStatus(person);
         p.team=(person.currentTeam&&person.currentTeam.name)||p.team;
+        p.teamId=(person.currentTeam&&person.currentTeam.id)||p.teamId;
       }
     } catch(e) {}
   }));
@@ -878,7 +927,7 @@ async function renderModalOverview(p) {
       '<div class="stat-card"><div class="val">'+s.kPct+'</div><div class="lbl">K%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.bbPct+'</div><div class="lbl">BB%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.sb+'/'+s.cs+'</div><div class="lbl">SB/CS</div></div>'+
-      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.wrcPlus)+'">'+(s.wrcPlus!=null?s.wrcPlus:'—')+'</div><div class="lbl">wRC+</div></div>'+
+      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.opsPlus)+'">'+(s.opsPlus!=null?s.opsPlus:'—')+'</div><div class="lbl">OPS+</div></div>'+
       '</div>'+notesHTML(p.id);
   }
 }
@@ -937,9 +986,9 @@ async function renderModalCharts(p) {
 
 function chartOpts() {
   return {responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:'#aa7a5a',boxWidth:12}}},
-    scales:{x:{ticks:{color:'#aa7a5a',maxTicksLimit:10,maxRotation:45},grid:{color:'#3a2a1a'}},
-            y:{ticks:{color:'#aa7a5a'},grid:{color:'#3a2a1a'}}}};
+    plugins:{legend:{labels:{color:'#5a8aaa',boxWidth:12}}},
+    scales:{x:{ticks:{color:'#5a8aaa',maxTicksLimit:10,maxRotation:45},grid:{color:'#1a2e44'}},
+            y:{ticks:{color:'#5a8aaa'},grid:{color:'#1a2e44'}}}};
 }
 
 async function fetchLevelSplits(p) {
@@ -979,7 +1028,9 @@ async function renderModalByLevel(p) {
           var eraNum=parseFloat(agg.era);
           plusVal=(leagueContext.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((leagueContext.era/eraNum)*100):null;
         } else {
-          plusVal=(leagueContext.wOBA&&agg.wOBA!=null)?Math.round((agg.wOBA/leagueContext.wOBA)*100):null;
+          var obpNum=parseFloat(agg.obp),slgNum=parseFloat(agg.slg);
+          plusVal=(leagueContext.obp&&leagueContext.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
+            Math.round(100*((obpNum/leagueContext.obp)+(slgNum/leagueContext.slg)-1)):null;
         }
       }
       if (p.type==='pitcher') {
@@ -1010,8 +1061,8 @@ async function renderModalByLevel(p) {
       '<tr><th style="'+thS+';text-align:left">Level</th><th style="'+thS+';text-align:left">Team</th>'+
       '<th style="'+thS+'">G</th><th style="'+thS+'">AB</th><th style="'+thS+'">AVG</th>'+
       '<th style="'+thS+'">OBP</th><th style="'+thS+'">SLG</th><th style="'+thS+'">OPS</th>'+
-      '<th style="'+thS+'">HR</th><th style="'+thS+'">RBI</th><th style="'+thS+'">wRC+</th></tr>';
-    box.innerHTML='<div style="color:var(--muted);font-size:0.78rem;margin-bottom:12px">ERA+/wRC+ use the same blended, all-levels league baseline as elsewhere in the app — not level-specific.</div>'+
+      '<th style="'+thS+'">HR</th><th style="'+thS+'">RBI</th><th style="'+thS+'">OPS+</th></tr>';
+    box.innerHTML='<div style="color:var(--muted);font-size:0.78rem;margin-bottom:12px">ERA+/OPS+ here use the same blended, all-levels league baseline as the main tables, but without a park-factor adjustment (we don\'t track team IDs per historical level stint). The main Pitchers/Hitters tables do apply a real, computed park factor.</div>'+
       '<table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
   } catch(e) {box.innerHTML='<div class="empty-state"><h2>Failed to load level splits</h2></div>';}
 }
@@ -1320,7 +1371,7 @@ async function loadTransactions() {
 async function init() {
   document.getElementById('lastUpdated').textContent='Loading...';
   await Promise.all([Promise.all(players.map(function(p){return fetchStats(p);})), refreshLeagueContext()]);
-  applyLeagueAdjustedStats();
+  await applyLeagueAdjustedStats();
   renderAll();
   document.getElementById('lastUpdated').textContent=players.length?'Last updated: '+new Date().toLocaleString():'Add players to get started';
 }
