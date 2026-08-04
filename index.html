@@ -398,13 +398,26 @@ async function fetchStats(p) {
   return statsCache[key];
 }
 
+// Converts MLB Stats API innings-pitched notation ("5.1" = 5 innings + 1 out,
+// "5.2" = 5 innings + 2 outs) into total outs. NOTE: the .1/.2 is not a
+// decimal fraction of an inning — it IS the out count — so it must be parsed
+// as whole + digit, never multiplied by 3 directly.
+function ipStringToOuts(ipStr) {
+  var ip = parseFloat(ipStr || 0);
+  if (!ip) return 0;
+  var whole = Math.trunc(ip);
+  var frac = Math.round((ip - whole) * 10); // 0, 1, or 2
+  if (frac > 2 || frac < 0) frac = 0; // safety against malformed data
+  return whole * 3 + frac;
+}
+
 function aggregateSplits(splits, type) {
   if (type==='pitcher') {
     var w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0,totalPitches=0,totalStrikes=0,totalBases=0,ir=0,irs=0;
     splits.forEach(function(s) {
       var st=s.stat;
       w+=st.wins||0; l+=st.losses||0; g+=st.gamesPitched||0; gs+=st.gamesStarted||0;
-      ip+=Math.round(parseFloat(st.inningsPitched||0)*3);
+      ip+=ipStringToOuts(st.inningsPitched);
       h+=st.hits||0; r+=st.runs||0; er+=st.earnedRuns||0; hr+=st.homeRuns||0;
       bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
       so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; bf+=st.battersFaced||0;
@@ -482,7 +495,7 @@ async function getLeagueContext(seasonYear) {
         var splitsP=dP.stats&&dP.stats[0]&&dP.stats[0].splits?dP.stats[0].splits:[];
         splitsP.forEach(function(s){
           var st=s.stat;
-          pER+=st.earnedRuns||0; pIP+=Math.round(parseFloat(st.inningsPitched||0)*3);
+          pER+=st.earnedRuns||0; pIP+=ipStringToOuts(st.inningsPitched);
         });
       }
     } catch(e) {}
@@ -603,7 +616,7 @@ function pitcherTrend(splits) {
   var ip=0,er=0,h=0,bb=0;
   last5.forEach(function(s) {
     var st=s.stat;
-    ip+=Math.round(parseFloat(st.inningsPitched||0)*3);
+    ip+=ipStringToOuts(st.inningsPitched);
     er+=st.earnedRuns||0; h+=st.hits||0; bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
   });
   return {era:ip>0?(er*27/ip).toFixed(2):null,whip:ip>0?((bb+h)/(ip/3)).toFixed(2):null};
@@ -950,7 +963,7 @@ async function renderModalCharts(p) {
       var labels=[],eras=[],whips=[],fips=[];
       splits.forEach(function(s,i){
         var st=s.stat;
-        cumIP+=Math.round(parseFloat(st.inningsPitched||0)*3);
+        cumIP+=ipStringToOuts(st.inningsPitched);
         cumER+=st.earnedRuns||0; cumH+=st.hits||0;
         cumBB+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
         cumHBP+=st.hitBatsmen||0; cumHR+=st.homeRuns||0; cumSO+=st.strikeOuts||0;
@@ -1006,14 +1019,19 @@ async function fetchLevelSplits(p) {
       if (!r.ok) return;
       var d=await r.json();
       var rawSplits=d.stats&&d.stats[0]&&d.stats[0].splits?d.stats[0].splits:[];
-if (!rawSplits.length) return;
-// Skip aggregate "combined stint" rows the API adds for traded players
-// (numTeams > 1) — otherwise aggregateSplits() double-counts on top of
-// the individual team splits, same issue as fetchAllLevels().
-var splits=rawSplits.filter(function(s){ return !(s.numTeams && s.numTeams > 1); });
-if (!splits.length) return;
-var teamName=(splits[splits.length-1].team&&splits[splits.length-1].team.name)||'—';
-levels.push({sportId:sid,levelName:LEVEL_NAMES[sid]||('Level '+sid),teamName:teamName,splits:splits});
+      if (!rawSplits.length) return;
+      // Skip aggregate "combined stint" rows the API adds for traded players
+      // (numTeams > 1) — otherwise aggregateSplits() double-counts on top of
+      // the individual team splits, same issue as fetchAllLevels().
+      var splits=rawSplits.filter(function(s){ return !(s.numTeams && s.numTeams > 1); });
+      if (!splits.length) return;
+      // One row per team stint (rather than blending all stints at a level
+      // into a single row) so trades within the same level show separately,
+      // matching how MiLB.com displays split stints.
+      splits.forEach(function(s){
+        var teamName=(s.team&&s.team.name)||'—';
+        levels.push({sportId:sid,levelName:LEVEL_NAMES[sid]||('Level '+sid),teamName:teamName,splits:[s]});
+      });
     } catch(e) {}
   }));
   levels.sort(function(a,b){return SPORT_IDS.indexOf(a.sportId)-SPORT_IDS.indexOf(b.sportId);});
