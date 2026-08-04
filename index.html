@@ -292,6 +292,10 @@ async function fetchAllLevels(buildUrl) {
       var d = await r.json();
       var splits = d.stats && d.stats[0] && d.stats[0].splits ? d.stats[0].splits : [];
       for (var j = 0; j < splits.length; j++) {
+        // Skip aggregate "combined stint" rows the API adds for traded players.
+        // These summarize multiple team splits into one entry (numTeams > 1) and
+        // would double-count on top of the individual team splits below.
+        if (splits[j].numTeams && splits[j].numTeams > 1) continue;
         var teamId = splits[j].team && splits[j].team.id ? splits[j].team.id : 'x'+i+j;
         if (!seen[teamId]) { seen[teamId] = true; allSplits.push(splits[j]); }
       }
