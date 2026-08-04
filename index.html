@@ -1005,10 +1005,15 @@ async function fetchLevelSplits(p) {
       var r=await proxiedFetch(API+'/people/'+p.id+'/stats?stats=season&season='+season+'&group='+group+'&sportId='+sid);
       if (!r.ok) return;
       var d=await r.json();
-      var splits=d.stats&&d.stats[0]&&d.stats[0].splits?d.stats[0].splits:[];
-      if (!splits.length) return;
-      var teamName=(splits[splits.length-1].team&&splits[splits.length-1].team.name)||'—';
-      levels.push({sportId:sid,levelName:LEVEL_NAMES[sid]||('Level '+sid),teamName:teamName,splits:splits});
+      var rawSplits=d.stats&&d.stats[0]&&d.stats[0].splits?d.stats[0].splits:[];
+if (!rawSplits.length) return;
+// Skip aggregate "combined stint" rows the API adds for traded players
+// (numTeams > 1) — otherwise aggregateSplits() double-counts on top of
+// the individual team splits, same issue as fetchAllLevels().
+var splits=rawSplits.filter(function(s){ return !(s.numTeams && s.numTeams > 1); });
+if (!splits.length) return;
+var teamName=(splits[splits.length-1].team&&splits[splits.length-1].team.name)||'—';
+levels.push({sportId:sid,levelName:LEVEL_NAMES[sid]||('Level '+sid),teamName:teamName,splits:splits});
     } catch(e) {}
   }));
   levels.sort(function(a,b){return SPORT_IDS.indexOf(a.sportId)-SPORT_IDS.indexOf(b.sportId);});
