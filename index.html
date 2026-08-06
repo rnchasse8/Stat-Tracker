@@ -612,8 +612,13 @@ function extractStatus(person) {
 
 function statusBadge(status) {
   if (!status||status==='Active') return '';
-  var color=(status.indexOf('IL')>=0||status.indexOf('Injured')>=0)?'var(--red)':status.indexOf('Day-to-Day')>=0?'#f5a623':(status.indexOf('Released')>=0||status.indexOf('Free Agent')>=0||status.indexOf('DFA')>=0)?'var(--muted)':'var(--muted)';
-  return '<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid '+color+';color:'+color+';margin-left:5px;vertical-align:middle">'+status+'</span>';
+  var isReleased=status.indexOf('Released')>=0;
+  var color=(isReleased||status.indexOf('IL')>=0||status.indexOf('Injured')>=0)?'var(--red)':status.indexOf('Day-to-Day')>=0?'#f5a623':'var(--muted)';
+  // Released gets a solid fill instead of just an outline so it's impossible to miss on the roster.
+  var style=isReleased
+    ? 'background:'+color+';color:#fff;border:1px solid '+color
+    : 'border:1px solid '+color+';color:'+color;
+  return '<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;'+style+';margin-left:5px;vertical-align:middle">'+status+'</span>';
 }
 
 function getNotes(id) { return localStorage.getItem('note-'+id)||''; }
@@ -819,22 +824,42 @@ function savePlayers() { localStorage.setItem('farmPlayers',JSON.stringify(playe
 
 async function refreshStatuses() {
   showToast('Refreshing statuses...');
+  var today=new Date();
+  var txStart=new Date(today); txStart.setDate(txStart.getDate()-90);
+  var txStartStr=txStart.toISOString().slice(0,10);
+  var txEndStr=today.toISOString().slice(0,10);
   await Promise.all(players.map(async function(p) {
     try {
       var r=await proxiedFetch(API+'/people/'+p.id+'?hydrate=currentTeam,rosterEntries');
       var d=await r.json();
       var person=d.people&&d.people[0];
       if (person) {
-        // Uncomment to verify rosterEntries field names against a live
-        // response for a released player (e.g. to confirm the date field
-        // used for sorting in extractStatus):
-        // console.log(p.name, JSON.stringify(person.rosterEntries));
         p.status=extractStatus(person);
         // Note: team name intentionally keeps the LAST known team if
         // currentTeam is now empty (e.g. released), so you can see who
         // they were released from rather than losing that context.
         p.team=(person.currentTeam&&person.currentTeam.name)||p.team;
         p.teamId=(person.currentTeam&&person.currentTeam.id)||p.teamId;
+      }
+    } catch(e) {}
+    // Authoritative release check: rosterEntries/currentTeam can lag or
+    // never get cleanly closed out for MiLB players, but the Transactions
+    // endpoint (same one the Transactions tab already uses) reflects a
+    // release the moment it's recorded. This overrides extractStatus's
+    // guess whenever a release transaction shows up in the last 90 days.
+    try {
+      var tr=await proxiedFetch(API+'/transactions?playerId='+p.id+'&startDate='+txStartStr+'&endDate='+txEndStr);
+      if (tr.ok) {
+        var td=await tr.json();
+        var txs=(td.transactions||[]).slice().sort(function(a,b){
+          var da=a.date||a.effectiveDate||''; var db=b.date||b.effectiveDate||'';
+          return da<db?1:da>db?-1:0;
+        });
+        var latestTx=txs[0];
+        if (latestTx) {
+          var desc=(latestTx.description||latestTx.typeDesc||'');
+          if (desc.indexOf('Released')>=0) p.status='Released';
+        }
       }
     } catch(e) {}
   }));
