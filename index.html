@@ -587,12 +587,32 @@ function extractStatus(person) {
   for (var i=0;i<entries.length;i++) {
     if (entries[i].isActive) return entries[i].status&&entries[i].status.description?entries[i].status.description:'Active';
   }
+  // No active roster entry found. Previously this silently fell back to
+  // 'Active', which is why released players never updated. If the player
+  // has no current team at all, that's the strongest signal they've been
+  // released/DFA'd/are a free agent — surface that instead of assuming Active.
+  if (!person.currentTeam) {
+    if (entries.length) {
+      // Best-effort: try to grab the most recent entry's own status text.
+      // Field name for the entry date isn't verified against a live response
+      // yet (no network access to statsapi.mlb.com from this sandbox) — if
+      // this doesn't pick the right entry, check what fields actually exist
+      // on person.rosterEntries[i] (uncomment the console.log below) and
+      // swap 'startDate'/'date' for the correct field.
+      var sorted=entries.slice().sort(function(a,b){
+        return (b.startDate||b.date||'').localeCompare(a.startDate||a.date||'');
+      });
+      var latest=sorted[0];
+      if (latest.status&&latest.status.description) return latest.status.description;
+    }
+    return 'Free Agent';
+  }
   return 'Active';
 }
 
 function statusBadge(status) {
   if (!status||status==='Active') return '';
-  var color=(status.indexOf('IL')>=0||status.indexOf('Injured')>=0)?'var(--red)':status.indexOf('Day-to-Day')>=0?'#f5a623':'var(--muted)';
+  var color=(status.indexOf('IL')>=0||status.indexOf('Injured')>=0)?'var(--red)':status.indexOf('Day-to-Day')>=0?'#f5a623':(status.indexOf('Released')>=0||status.indexOf('Free Agent')>=0||status.indexOf('DFA')>=0)?'var(--muted)':'var(--muted)';
   return '<span style="display:inline-block;font-size:0.68rem;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid '+color+';color:'+color+';margin-left:5px;vertical-align:middle">'+status+'</span>';
 }
 
@@ -732,14 +752,14 @@ async function doSearch(inline) {
   if (inline) {
     searchTimeout=setTimeout(async function() {
       try {
-        var r=await proxiedFetch(API+'/people/search?names='+encodeURIComponent(q)+'&sportIds=1,11,12,13,14,15,16&active=true');
+        var r=await proxiedFetch(API+'/people/search?names='+encodeURIComponent(q)+'&sportIds=1,11,12,13,14,15,16&active=true&hydrate=currentTeam');
         var d=await r.json();
         showInlineResults(d.people||[]);
       } catch(e) {}
     },400);
   } else {
     try {
-      var r=await proxiedFetch(API+'/people/search?names='+encodeURIComponent(q)+'&sportIds=1,11,12,13,14,15,16&active=true');
+      var r=await proxiedFetch(API+'/people/search?names='+encodeURIComponent(q)+'&sportIds=1,11,12,13,14,15,16&active=true&hydrate=currentTeam');
       var d=await r.json();
       showInlineResults(d.people||[]);
     } catch(e) {showToast('Search failed. Try again.');}
@@ -805,7 +825,14 @@ async function refreshStatuses() {
       var d=await r.json();
       var person=d.people&&d.people[0];
       if (person) {
+        // Uncomment to verify rosterEntries field names against a live
+        // response for a released player (e.g. to confirm the date field
+        // used for sorting in extractStatus):
+        // console.log(p.name, JSON.stringify(person.rosterEntries));
         p.status=extractStatus(person);
+        // Note: team name intentionally keeps the LAST known team if
+        // currentTeam is now empty (e.g. released), so you can see who
+        // they were released from rather than losing that context.
         p.team=(person.currentTeam&&person.currentTeam.name)||p.team;
         p.teamId=(person.currentTeam&&person.currentTeam.id)||p.teamId;
       }
