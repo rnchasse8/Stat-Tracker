@@ -825,9 +825,12 @@ function savePlayers() { localStorage.setItem('farmPlayers',JSON.stringify(playe
 async function refreshStatuses() {
   showToast('Refreshing statuses...');
   var today=new Date();
-  var txStart=new Date(today); txStart.setDate(txStart.getDate()-90);
-  var txStartStr=txStart.toISOString().slice(0,10);
-  var txEndStr=today.toISOString().slice(0,10);
+  var isCurrentSeason=season>=today.getFullYear();
+  // Match the same window the working Transactions tab uses (season start
+  // through today) rather than a fixed 90-day lookback, which could miss
+  // releases from earlier in the season.
+  var txStartStr=season+'-01-01';
+  var txEndStr=isCurrentSeason?today.toISOString().slice(0,10):season+'-12-31';
   await Promise.all(players.map(async function(p) {
     try {
       var r=await proxiedFetch(API+'/people/'+p.id+'?hydrate=currentTeam,rosterEntries');
@@ -846,7 +849,7 @@ async function refreshStatuses() {
     // never get cleanly closed out for MiLB players, but the Transactions
     // endpoint (same one the Transactions tab already uses) reflects a
     // release the moment it's recorded. This overrides extractStatus's
-    // guess whenever a release transaction shows up in the last 90 days.
+    // guess whenever a release transaction shows up this season.
     try {
       var tr=await proxiedFetch(API+'/transactions?playerId='+p.id+'&startDate='+txStartStr+'&endDate='+txEndStr);
       if (tr.ok) {
@@ -857,8 +860,11 @@ async function refreshStatuses() {
         });
         var latestTx=txs[0];
         if (latestTx) {
-          var desc=(latestTx.description||latestTx.typeDesc||'');
-          if (desc.indexOf('Released')>=0) p.status='Released';
+          // Case-insensitive, and check typeCode too — the API phrases this
+          // inconsistently across levels/orgs ("Released", "Release",
+          // "Unconditional release", typeCode "REL", etc).
+          var desc=((latestTx.description||'')+' '+(latestTx.typeDesc||'')+' '+(latestTx.typeCode||'')).toLowerCase();
+          if (desc.indexOf('release')>=0) p.status='Released';
         }
       }
     } catch(e) {}
