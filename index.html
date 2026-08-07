@@ -142,7 +142,7 @@
         <th onclick="sortTable('pitchers','strikePct')">STR%</th>
         <th onclick="sortTable('pitchers','pitchesPerGame')">P/G</th>
         <th onclick="sortTable('pitchers','irsPct')">IRS%</th>
-        <th onclick="sortTable('pitchers','eraPlus')">ERA+</th>
+        <th onclick="sortTable('pitchers','eraPlus')">ERAx</th>
         <th></th>
       </tr></thead>
       <tbody id="pitcher-body"></tbody>
@@ -169,7 +169,7 @@
         <th onclick="sortTable('hitters','bbPct')">BB%</th>
         <th onclick="sortTable('hitters','sb')">SB</th>
         <th onclick="sortTable('hitters','cs')">CS</th>
-        <th onclick="sortTable('hitters','opsPlus')">OPS+</th>
+        <th onclick="sortTable('hitters','opsPlus')">OPSx</th>
         <th></th>
       </tr></thead>
       <tbody id="hitter-body"></tbody>
@@ -297,7 +297,11 @@ async function fetchAllLevels(buildUrl) {
         // would double-count on top of the individual team splits below.
         if (splits[j].numTeams && splits[j].numTeams > 1) continue;
         var teamId = splits[j].team && splits[j].team.id ? splits[j].team.id : 'x'+i+j;
-        if (!seen[teamId]) { seen[teamId] = true; allSplits.push(splits[j]); }
+        if (!seen[teamId]) {
+          seen[teamId] = true;
+          splits[j]._sportId = SPORT_IDS[i]; // tag with level for per-level league baselines
+          allSplits.push(splits[j]);
+        }
       }
     } catch(e) {}
   }
@@ -470,12 +474,20 @@ function fmt(v) {
   return v;
 }
 
+// Returns { bySport: { <sportId>: {wOBA,era,obp,slg}, ... }, blended: {wOBA,era,obp,slg} }
+// bySport gives a true level-specific baseline (so an A-ball player is only
+// measured against other A-ball hitters/pitchers, not against MLB numbers
+// mixed in). blended is kept around as a fallback for cases where a
+// player's level can't be determined.
 async function getLeagueContext(seasonYear) {
   if (leagueContextCache[seasonYear]) return leagueContextCache[seasonYear];
-  var hAB=0,hH=0,h2b=0,h3b=0,hHR=0,hBB=0,hHBP=0,hSF=0;
-  var pER=0,pIP=0;
+  var bySport={};
+  var totalHAB=0,totalHH=0,totalH2b=0,totalH3b=0,totalHHR=0,totalHBB=0,totalHHBP=0,totalHSF=0;
+  var totalPER=0,totalPIP=0;
   for (var i=0;i<SPORT_IDS.length;i++) {
     var sid=SPORT_IDS[i];
+    var hAB=0,hH=0,h2b=0,h3b=0,hHR=0,hBB=0,hHBP=0,hSF=0;
+    var pER=0,pIP=0;
     try {
       var rH=await proxiedFetch(API+'/teams/stats?season='+seasonYear+'&sportIds='+sid+'&stats=season&group=hitting');
       if (rH.ok) {
@@ -499,7 +511,17 @@ async function getLeagueContext(seasonYear) {
         });
       }
     } catch(e) {}
+    totalHAB+=hAB; totalHH+=hH; totalH2b+=h2b; totalH3b+=h3b; totalHHR+=hHR;
+    totalHBB+=hBB; totalHHBP+=hHBP; totalHSF+=hSF; totalPER+=pER; totalPIP+=pIP;
+    bySport[sid]=computeCtx(hAB,hH,h2b,h3b,hHR,hBB,hHBP,hSF,pER,pIP);
   }
+  var blended=computeCtx(totalHAB,totalHH,totalH2b,totalH3b,totalHHR,totalHBB,totalHHBP,totalHSF,totalPER,totalPIP);
+  var ctx={bySport:bySport,blended:blended};
+  leagueContextCache[seasonYear]=ctx;
+  return ctx;
+}
+
+function computeCtx(hAB,hH,h2b,h3b,hHR,hBB,hHBP,hSF,pER,pIP) {
   var lgPA=hAB+hBB+hHBP+hSF;
   var singles=hH-h2b-h3b-hHR;
   var lgTB=hH+h2b+2*h3b+3*hHR;
@@ -507,9 +529,7 @@ async function getLeagueContext(seasonYear) {
   var lgOBP=lgPA>0?(hH+hBB+hHBP)/lgPA:null;
   var lgSLG=hAB>0?lgTB/hAB:null;
   var lgERA=pIP>0?(pER*27/pIP):null;
-  var ctx={wOBA:lgWOBA,era:lgERA,obp:lgOBP,slg:lgSLG};
-  leagueContextCache[seasonYear]=ctx;
-  return ctx;
+  return {wOBA:lgWOBA,era:lgERA,obp:lgOBP,slg:lgSLG};
 }
 
 async function refreshLeagueContext() {
@@ -554,9 +574,41 @@ async function getTeamParkFactor(teamId, seasonYear) {
   } catch(e) { parkFactorCache[key]=1; return 1; }
 }
 
+// Determines which level a player should be measured against: whichever
+// sportId they accumulated the most playing time at this season (most outs
+// pitched, or most plate appearances). This matters for anyone who spent
+// time at multiple levels — they get compared to the level they actually
+// spent the season facing, not a blend that includes levels they barely played.
+function primarySportId(splits, type) {
+  if (!splits||!splits.length) return null;
+  var totals={};
+  splits.forEach(function(s){
+    var sid=s._sportId;
+    if (sid==null) return;
+    var st=s.stat;
+    var weight = type==='pitcher'
+      ? ipStringToOuts(st.inningsPitched)
+      : ((st.atBats||0)+(st.baseOnBalls||0)+(st.hitByPitch||0)+(st.sacFlies||0));
+    totals[sid]=(totals[sid]||0)+weight;
+  });
+  var bestSid=null, bestWeight=-1;
+  Object.keys(totals).forEach(function(sid){
+    if (totals[sid]>bestWeight) { bestWeight=totals[sid]; bestSid=parseInt(sid,10); }
+  });
+  return bestSid;
+}
+
 // True Baseball-Reference style formulas:
-// ERA+ = 100 * (lgERA * parkFactor) / playerERA
-// OPS+ = 100 * [ OBP/(lgOBP*parkFactor) + SLG/(lgSLG*parkFactor) - 1 ]
+// ERAx = 100 * (lgERA * parkFactor) / playerERA
+// OPSx = 100 * [ OBP/(lgOBP*parkFactor) + SLG/(lgSLG*parkFactor) - 1 ]
+// Named "x" (index) rather than the standard "+" suffix (ERA+/OPS+) since
+// those are established Baseball-Reference stat names computed a specific,
+// official way — this is our own from-scratch calculation (self-computed
+// park factor, level-specific baselines) and shouldn't be confused with them.
+// Each player is compared against the league baseline for the level they
+// spent the most time at this season (see primarySportId), not a blend
+// across every level — so an A-ball hitter is measured against A-ball
+// pitching, not against MLB numbers mixed into the average.
 async function applyLeagueAdjustedStats() {
   if (!leagueContext) return;
   await Promise.all(players.map(async function(p) {
@@ -566,13 +618,16 @@ async function applyLeagueAdjustedStats() {
     var s=entry.agg;
     var pf=await getTeamParkFactor(p.teamId,season);
     p._parkFactor=pf;
+    var sid=primarySportId(entry.splits,p.type);
+    p._levelSportId=sid;
+    var lc=(sid!=null&&leagueContext.bySport[sid]&&leagueContext.bySport[sid].era!=null)?leagueContext.bySport[sid]:leagueContext.blended;
     if (p.type==='pitcher') {
       var eraNum=parseFloat(s.era);
-      s.eraPlus=(leagueContext.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((leagueContext.era*pf)/eraNum*100):null;
+      s.eraPlus=(lc.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((lc.era*pf)/eraNum*100):null;
     } else {
       var obpNum=parseFloat(s.obp),slgNum=parseFloat(s.slg);
-      s.opsPlus=(leagueContext.obp&&leagueContext.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
-        Math.round(100*((obpNum/(leagueContext.obp*pf))+(slgNum/(leagueContext.slg*pf))-1)):null;
+      s.opsPlus=(lc.obp&&lc.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
+        Math.round(100*((obpNum/(lc.obp*pf))+(slgNum/(lc.slg*pf))-1)):null;
     }
   }));
 }
@@ -988,7 +1043,7 @@ async function renderModalOverview(p) {
       '<div class="stat-card"><div class="val">'+s.strikePct+'</div><div class="lbl">STR%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.pitchesPerGame+'</div><div class="lbl">P/G</div></div>'+
       '<div class="stat-card"><div class="val">'+s.irsPct+'</div><div class="lbl">IRS%</div></div>'+
-      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.eraPlus)+'">'+(s.eraPlus!=null?s.eraPlus:'—')+'</div><div class="lbl">ERA+</div></div>'+
+      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.eraPlus)+'">'+(s.eraPlus!=null?s.eraPlus:'—')+'</div><div class="lbl">ERAx</div></div>'+
       '</div>'+notesHTML(p.id);
   } else {
     box.innerHTML='<div class="stat-grid">'+
@@ -1002,7 +1057,7 @@ async function renderModalOverview(p) {
       '<div class="stat-card"><div class="val">'+s.kPct+'</div><div class="lbl">K%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.bbPct+'</div><div class="lbl">BB%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.sb+'/'+s.cs+'</div><div class="lbl">SB/CS</div></div>'+
-      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.opsPlus)+'">'+(s.opsPlus!=null?s.opsPlus:'—')+'</div><div class="lbl">OPS+</div></div>'+
+      '<div class="stat-card"><div class="val" style="color:'+statPlusColor(s.opsPlus)+'">'+(s.opsPlus!=null?s.opsPlus:'—')+'</div><div class="lbl">OPSx</div></div>'+
       '</div>'+notesHTML(p.id);
   }
 }
@@ -1109,13 +1164,16 @@ async function renderModalByLevel(p) {
       var agg=aggregateSplits(lvl.splits,p.type);
       var plusVal=null;
       if (leagueContext) {
+        // Use this row's own level baseline (not the blended one) so a
+        // Rookie-ball or A-ball stint isn't measured against MLB numbers.
+        var lc=(leagueContext.bySport[lvl.sportId]&&leagueContext.bySport[lvl.sportId].era!=null)?leagueContext.bySport[lvl.sportId]:leagueContext.blended;
         if (p.type==='pitcher') {
           var eraNum=parseFloat(agg.era);
-          plusVal=(leagueContext.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((leagueContext.era/eraNum)*100):null;
+          plusVal=(lc.era&&!isNaN(eraNum)&&eraNum>0)?Math.round((lc.era/eraNum)*100):null;
         } else {
           var obpNum=parseFloat(agg.obp),slgNum=parseFloat(agg.slg);
-          plusVal=(leagueContext.obp&&leagueContext.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
-            Math.round(100*((obpNum/leagueContext.obp)+(slgNum/leagueContext.slg)-1)):null;
+          plusVal=(lc.obp&&lc.slg&&!isNaN(obpNum)&&!isNaN(slgNum))?
+            Math.round(100*((obpNum/lc.obp)+(slgNum/lc.slg)-1)):null;
         }
       }
       if (p.type==='pitcher') {
@@ -1142,12 +1200,12 @@ async function renderModalByLevel(p) {
       '<tr><th style="'+thS+';text-align:left">Level</th><th style="'+thS+';text-align:left">Team</th>'+
       '<th style="'+thS+'">G</th><th style="'+thS+'">IP</th><th style="'+thS+'">ERA</th>'+
       '<th style="'+thS+'">FIP</th><th style="'+thS+'">WHIP</th><th style="'+thS+'">SO</th>'+
-      '<th style="'+thS+'">BB</th><th style="'+thS+'">ERA+</th></tr>':
+      '<th style="'+thS+'">BB</th><th style="'+thS+'">ERAx</th></tr>':
       '<tr><th style="'+thS+';text-align:left">Level</th><th style="'+thS+';text-align:left">Team</th>'+
       '<th style="'+thS+'">G</th><th style="'+thS+'">AB</th><th style="'+thS+'">AVG</th>'+
       '<th style="'+thS+'">OBP</th><th style="'+thS+'">SLG</th><th style="'+thS+'">OPS</th>'+
-      '<th style="'+thS+'">HR</th><th style="'+thS+'">RBI</th><th style="'+thS+'">OPS+</th></tr>';
-    box.innerHTML='<div style="color:var(--muted);font-size:0.78rem;margin-bottom:12px">ERA+/OPS+ here use the same blended, all-levels league baseline as the main tables, but without a park-factor adjustment (we don\'t track team IDs per historical level stint). The main Pitchers/Hitters tables do apply a real, computed park factor.</div>'+
+      '<th style="'+thS+'">HR</th><th style="'+thS+'">RBI</th><th style="'+thS+'">OPSx</th></tr>';
+    box.innerHTML='<div style="color:var(--muted);font-size:0.78rem;margin-bottom:12px">ERAx/OPSx here are calculated against each level\'s own league baseline (so a Rookie-ball line is compared to Rookie-ball, not MLB), but without a park-factor adjustment (we don\'t track team IDs per historical level stint). The main Pitchers/Hitters tables use the level you played the most at this season and do apply a real, computed park factor.</div>'+
       '<table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
   } catch(e) {box.innerHTML='<div class="empty-state"><h2>Failed to load level splits</h2></div>';}
 }
