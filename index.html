@@ -266,6 +266,7 @@
     <div class="modal-tabs">
       <div class="modal-tab active" id="mtab-overview" onclick="switchModalTab('overview')">Overview</div>
       <div class="modal-tab" id="mtab-bylevel" onclick="switchModalTab('bylevel')">By Level</div>
+      <div class="modal-tab" id="mtab-bymonth" onclick="switchModalTab('bymonth')">By Month</div>
       <div class="modal-tab" id="mtab-charts" onclick="switchModalTab('charts')">Trend Charts</div>
     </div>
     <div class="modal-body" id="modalBody">Loading...</div>
@@ -1011,6 +1012,7 @@ async function openModal(id) {
   modalTab='overview';
   document.getElementById('mtab-overview').className='modal-tab active';
   document.getElementById('mtab-bylevel').className='modal-tab';
+  document.getElementById('mtab-bymonth').className='modal-tab';
   document.getElementById('mtab-charts').className='modal-tab';
   await renderModalOverview(p);
 }
@@ -1214,11 +1216,76 @@ function switchModalTab(tab) {
   modalTab=tab;
   document.getElementById('mtab-overview').className='modal-tab'+(tab==='overview'?' active':'');
   document.getElementById('mtab-bylevel').className='modal-tab'+(tab==='bylevel'?' active':'');
+  document.getElementById('mtab-bymonth').className='modal-tab'+(tab==='bymonth'?' active':'');
   document.getElementById('mtab-charts').className='modal-tab'+(tab==='charts'?' active':'');
   Object.values(trendCharts).forEach(function(c){c.destroy();}); trendCharts={};
   if (tab==='overview') renderModalOverview(currentModalPlayer);
   else if (tab==='bylevel') renderModalByLevel(currentModalPlayer);
+  else if (tab==='bymonth') renderModalByMonth(currentModalPlayer);
   else renderModalCharts(currentModalPlayer);
+}
+
+var MONTH_NAMES = {1:'March/April',2:'March/April',3:'March/April',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September/October',10:'September/October',11:'September/October',12:'September/October'};
+// Mirrors MLB.com's own bucketing (March+April combined, Sept+Oct combined)
+// so these numbers read the same way fans/scouts already expect.
+
+async function renderModalByMonth(p) {
+  var box=document.getElementById('modalBody');
+  box.innerHTML='<div class="loading"><span class="spinner"></span>Loading month splits...</div>';
+  try {
+    var group=p.type==='pitcher'?'pitching':'hitting';
+    var splits=await fetchAllGameLogs(function(sid){
+      return API+'/people/'+p.id+'/stats?stats=gameLog&season='+season+'&group='+group+'&sportId='+sid;
+    });
+    if (!splits.length) {box.innerHTML='<div class="empty-state"><h2>No game log data found</h2></div>'; return;}
+
+    // Bucket individual game splits into calendar months (in date order),
+    // then run each bucket back through the same aggregateSplits() math
+    // used everywhere else so these numbers always match the rest of the app.
+    var order=[]; var byMonth={};
+    splits.forEach(function(s){
+      if (!s.date) return;
+      var m=parseInt(s.date.split('-')[1],10);
+      if (!byMonth[m]) { byMonth[m]=[]; order.push(m); }
+      byMonth[m].push(s);
+    });
+    order.sort(function(a,b){return a-b;});
+
+    var thS='padding:10px 8px;background:var(--bg2);color:var(--muted);font-size:0.78rem;letter-spacing:1px;border-bottom:1px solid var(--border);text-align:right';
+    var tdS='padding:10px 8px;border-bottom:1px solid var(--border);text-align:right';
+    var rows=order.map(function(m){
+      var agg=aggregateSplits(byMonth[m],p.type);
+      var label=MONTH_NAMES[m]||m;
+      if (p.type==='pitcher') {
+        return '<tr>'+
+          '<td style="'+tdS+';text-align:left"><span style="font-weight:700">'+label+'</span></td>'+
+          '<td style="'+tdS+'">'+fmt(agg.g)+'</td><td style="'+tdS+'">'+fmt(agg.gs)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.ip)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.era)+'</td><td style="'+tdS+'">'+fmt(agg.fip)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.whip)+'</td><td style="'+tdS+'">'+fmt(agg.so)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.bb)+'</td><td style="'+tdS+'">'+fmt(agg.baa)+'</td></tr>';
+      } else {
+        return '<tr>'+
+          '<td style="'+tdS+';text-align:left"><span style="font-weight:700">'+label+'</span></td>'+
+          '<td style="'+tdS+'">'+fmt(agg.g)+'</td><td style="'+tdS+'">'+fmt(agg.ab)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.avg)+'</td><td style="'+tdS+'">'+fmt(agg.obp)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.slg)+'</td><td style="'+tdS+'">'+fmt(agg.ops)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.hr)+'</td><td style="'+tdS+'">'+fmt(agg.rbi)+'</td>'+
+          '<td style="'+tdS+'">'+fmt(agg.bb)+'</td><td style="'+tdS+'">'+fmt(agg.so)+'</td></tr>';
+      }
+    }).join('');
+    var header=p.type==='pitcher'?
+      '<tr><th style="'+thS+';text-align:left">Month</th>'+
+      '<th style="'+thS+'">G</th><th style="'+thS+'">GS</th><th style="'+thS+'">IP</th><th style="'+thS+'">ERA</th>'+
+      '<th style="'+thS+'">FIP</th><th style="'+thS+'">WHIP</th><th style="'+thS+'">SO</th>'+
+      '<th style="'+thS+'">BB</th><th style="'+thS+'">BAA</th></tr>':
+      '<tr><th style="'+thS+';text-align:left">Month</th>'+
+      '<th style="'+thS+'">G</th><th style="'+thS+'">AB</th><th style="'+thS+'">AVG</th>'+
+      '<th style="'+thS+'">OBP</th><th style="'+thS+'">SLG</th><th style="'+thS+'">OPS</th>'+
+      '<th style="'+thS+'">HR</th><th style="'+thS+'">RBI</th><th style="'+thS+'">BB</th><th style="'+thS+'">SO</th></tr>';
+    box.innerHTML='<div style="color:var(--muted);font-size:0.78rem;margin-bottom:12px">March and April are combined, as are September and October, matching how MLB.com splits are typically reported.</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>';
+  } catch(e) {box.innerHTML='<div class="empty-state"><h2>Failed to load month splits</h2></div>';}
 }
 
 function setRecapDay(offset) {
