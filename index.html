@@ -129,6 +129,7 @@
         <th onclick="sortTable('pitchers','gs')">GS</th>
         <th onclick="sortTable('pitchers','era')">ERA</th>
         <th onclick="sortTable('pitchers','fip')">FIP</th>
+        <th onclick="sortTable('pitchers','babip')">BABIP</th>
         <th onclick="sortTable('pitchers','ip')">IP</th>
         <th onclick="sortTable('pitchers','h')">H</th>
         <th onclick="sortTable('pitchers','so')">SO</th>
@@ -418,31 +419,33 @@ function ipStringToOuts(ipStr) {
 
 function aggregateSplits(splits, type) {
   if (type==='pitcher') {
-    var w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,bf=0,totalPitches=0,totalStrikes=0,totalBases=0,ir=0,irs=0;
+    var w=0,l=0,g=0,gs=0,ip=0,h=0,r=0,er=0,hr=0,bb=0,so=0,hbp=0,sf=0,bf=0,totalPitches=0,totalStrikes=0,totalBases=0,ir=0,irs=0;
     splits.forEach(function(s) {
       var st=s.stat;
       w+=st.wins||0; l+=st.losses||0; g+=st.gamesPitched||0; gs+=st.gamesStarted||0;
       ip+=ipStringToOuts(st.inningsPitched);
       h+=st.hits||0; r+=st.runs||0; er+=st.earnedRuns||0; hr+=st.homeRuns||0;
       bb+=(st.baseOnBalls||0)+(st.intentionalWalks||0);
-      so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; bf+=st.battersFaced||0;
+      so+=st.strikeOuts||0; hbp+=st.hitBatsmen||0; sf+=st.sacFlies||0; bf+=st.battersFaced||0;
       totalPitches+=st.numberOfPitches||0; totalStrikes+=st.strikes||0; totalBases+=st.totalBases||0;
       ir+=st.inheritedRunners||0; irs+=st.inheritedRunnersScored||0;
     });
     var ipReal=Math.floor(ip/3)+(ip%3)/10;
     var era=ip>0?(er*27/ip).toFixed(2):'—';
     var whip=ip>0?((bb+h)/(ip/3)).toFixed(2):'—';
-    var ab=bf-bb-hbp;
+    var ab=bf-bb-hbp-sf;
     var baa=ab>0?(h/ab).toFixed(3):'—';
     var fip=ip>0?(((13*hr)+(3*(bb+hbp))-(2*so))/(ip/3)+3.10).toFixed(2):'—';
+    var babipDenom=ab-so-hr+sf;
+    var babip=babipDenom>0?((h-hr)/babipDenom).toFixed(3):'—';
     var kPct=bf>0?(so/bf*100).toFixed(1)+'%':'—';
     var bbPct=bf>0?(bb/bf*100).toFixed(1)+'%':'—';
     var pitchesPerGame=g>0?(totalPitches/g).toFixed(1):'—';
     var strikePct=totalPitches>0?(totalStrikes/totalPitches*100).toFixed(1)+'%':'—';
     var slgAgainst=ab>0?(totalBases/ab).toFixed(3):'—';
     var irsPct=ir>0?(irs/ir*100).toFixed(1)+'%':'—';
-    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,bf:bf,
-            era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,kPct:kPct,bbPct:bbPct,
+    return {w:w,l:l,g:g,gs:gs,ip:ipReal,h:h,r:r,er:er,hr:hr,bb:bb,so:so,hbp:hbp,sf:sf,bf:bf,
+            era:era,whip:whip,baa:baa,slgAgainst:slgAgainst,fip:fip,babip:babip,kPct:kPct,bbPct:bbPct,
             totalPitches:totalPitches,pitchesPerGame:pitchesPerGame,strikePct:strikePct,irsPct:irsPct,ir:ir,irs:irs};
   } else {
     var g=0,ab=0,h=0,doubles=0,triples=0,hr=0,rbi=0,r=0,bb=0,so=0,sb=0,cs=0,hbp=0,sf=0;
@@ -732,12 +735,12 @@ function renderPitchers() {
     var splits=(statsCache[key]&&statsCache[key].splits)||[];
     var note=getNotes(p.id);
     var noteHTML=note?'<span style="display:block;font-size:0.72rem;color:#f5a623;margin-top:2px;font-style:italic">Note: '+(note.length>40?note.substring(0,40)+'…':note)+'</span>':'';
-    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span><span class="team-tag">'+(p.team||'—')+' · P</span></td><td colspan="20" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td><td><button class="remove-btn" onclick="removePlayer('+p.id+',\'pitcher\')">✕</button></td></tr>';
+    if (!s) return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span><span class="team-tag">'+(p.team||'—')+' · P</span></td><td colspan="21" style="color:var(--muted);font-style:italic;font-size:0.82rem">Not appeared this season.</td><td><button class="remove-btn" onclick="removePlayer('+p.id+',\'pitcher\')">✕</button></td></tr>';
     var trend=pitcherTrend(splits);
     return '<tr><td><span class="player-name" onclick="openModal('+p.id+')">'+p.name+'</span>'+statusBadge(p.status)+'<span class="team-tag">'+(p.team||'—')+' · P</span>'+noteHTML+'</td>'+
       '<td>'+fmt(s.w)+'</td><td>'+fmt(s.l)+'</td><td>'+fmt(s.g)+'</td><td>'+fmt(s.gs)+'</td>'+
       '<td>'+fmt(s.era)+trendIndicator(s.era,trend.era,true)+'</td>'+
-      '<td>'+fmt(s.fip)+'</td><td>'+fmt(s.ip)+'</td><td>'+fmt(s.h)+'</td><td>'+fmt(s.so)+'</td><td>'+fmt(s.bb)+'</td>'+
+      '<td>'+fmt(s.fip)+'</td><td>'+fmt(s.babip)+'</td><td>'+fmt(s.ip)+'</td><td>'+fmt(s.h)+'</td><td>'+fmt(s.so)+'</td><td>'+fmt(s.bb)+'</td>'+
       '<td>'+fmt(s.kPct)+'</td><td>'+fmt(s.bbPct)+'</td>'+
       '<td>'+fmt(s.whip)+trendIndicator(s.whip,trend.whip,true)+'</td>'+
       '<td>'+fmt(s.baa)+'</td><td>'+fmt(s.slgAgainst)+'</td><td>'+fmt(s.hr)+'</td>'+
@@ -1033,6 +1036,7 @@ async function renderModalOverview(p) {
     box.innerHTML='<div class="stat-grid">'+
       '<div class="stat-card"><div class="val">'+s.era+'</div><div class="lbl">ERA</div></div>'+
       '<div class="stat-card"><div class="val">'+s.fip+'</div><div class="lbl">FIP</div></div>'+
+      '<div class="stat-card"><div class="val">'+s.babip+'</div><div class="lbl">BABIP</div></div>'+
       '<div class="stat-card"><div class="val">'+s.whip+'</div><div class="lbl">WHIP</div></div>'+
       '<div class="stat-card"><div class="val">'+s.kPct+'</div><div class="lbl">K%</div></div>'+
       '<div class="stat-card"><div class="val">'+s.bbPct+'</div><div class="lbl">BB%</div></div>'+
